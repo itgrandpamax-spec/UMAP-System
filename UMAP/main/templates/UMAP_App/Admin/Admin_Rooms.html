@@ -1,0 +1,349 @@
+{% extends 'UMAP_App/Admin/Admin_Sidebar.html' %}
+{% load static %}
+
+{% block content %}
+      <header class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-2xl font-semibold text-white">Room Management</h2>
+          <p class="text-sm text-slate-400">Add, edit, and manage Rooms.</p>
+        </div>
+        <div>
+        <a href="{% url 'admin_floor_list' %}" class="px-4 py-2 text-white rounded-md shadow-sm hover:bg-slate-700 border border-slate-600">Back</a>
+        <a href="{% url 'admin_CRUD_Rooms' %}" class="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700">Add Room</a>
+        </div>
+      </header>
+
+      <!-- Map Table -->
+      <div class="bg-slate-800/50 p-6 rounded-2xl shadow-sm border border-slate-600">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-medium text-white">Room List{% if selected_floor %} for {{ selected_floor.name }}{% endif %}</h3>
+          <form method="get" class="flex items-center gap-2 text-sm">
+            <input type="text" name="search" placeholder="Search rooms..." value="{{ search_query }}" class="border border-slate-600 rounded-md p-2 text-sm bg-slate-800/50 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none" />
+            
+            <select name="building" onchange="this.form.submit()" class="border border-slate-600 rounded-md p-2 text-sm bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none">
+              <option value="">All Buildings</option>
+              {% for building_name in buildings %}
+              <option value="{{ building_name }}" {% if selected_building == building_name %}selected{% endif %}>{{ building_name }}</option>
+              {% endfor %}
+            </select>
+            
+            <select name="floor" onchange="this.form.submit()" class="border border-slate-600 rounded-md p-2 text-sm bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none">
+              <option value="">All Floors</option>
+              {% for floor in floors %}
+              <option value="{{ floor.id }}" {% if selected_floor.id == floor.id %}selected{% endif %}>{{ floor.name }}</option>
+              {% endfor %}
+            </select>
+            
+            <button type="submit" class="border border-slate-600 rounded-md p-2 text-sm bg-blue-600/50 text-white hover:bg-blue-600 transition">Search</button>
+            {% if search_query or selected_building or selected_floor %}
+            <a href="{% url 'admin_rooms_list' %}" class="border border-slate-600 rounded-md p-2 text-sm bg-slate-700/50 text-white hover:bg-slate-700 transition">Clear</a>
+            {% endif %}
+          </form>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="border-b border-slate-600">
+                <th class="p-3 text-slate-400">Room ID</th>
+                <th class="p-3 text-slate-400">Room Number</th>
+                <th class="p-3 text-slate-400">Room Name</th>
+                <th class="p-3 text-slate-400">Room Type</th>
+                <th class="p-3 text-slate-400">Description</th>
+                <th class="p-3 text-slate-400">Coordinates</th>
+                <th class="p-3 text-right text-slate-400">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for room in rooms %}
+              <tr class="border-b border-slate-700 hover:bg-slate-700/50 transition duration-150">
+                <td class="p-3 text-white">{{ room.id }}</td>
+                <td class="p-3 text-white">{{ room.profile.number }}</td>
+                <td class="p-3 text-white">{{ room.profile.name }}</td>
+                <td class="p-3 text-white">{{ room.profile.type }}</td>
+                <td class="p-3 text-white">{{ room.profile.description|default:"N/A" }}</td>
+                <td class="p-3 text-white">
+                  {% with coords=room.profile.coordinates %}
+                  {{ coords.x|floatformat:2 }}, {{ coords.y|floatformat:2 }}, {{ coords.z|floatformat:2 }}
+                  {% endwith %}
+                </td>
+                <td class="p-3 text-right space-x-2">
+                  <button onclick="viewRoomPreview({{ room.id }})" class="border border-slate-600 px-3 py-1 rounded-md text-green-400 hover:bg-green-600/50 hover:border-green-500">View</button>
+                  <button onclick="editRoom({{ room.id }})" class="border border-slate-600 px-3 py-1 rounded-md text-yellow-400 hover:bg-yellow-600/50 hover:border-yellow-500">Edit</button>
+                  <button onclick="deleteRoom({{ room.id }})" class="border border-slate-600 px-3 py-1 rounded-md text-red-400 hover:bg-red-600/50 hover:border-red-500">Delete</button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr class="border-b border-slate-700">
+                <td colspan="7" class="p-3 text-center text-slate-400">No rooms available. {% if not selected_floor %}Select a floor to view rooms.{% else %}Add your first room!{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="mt-4 flex items-center justify-between text-sm text-slate-400">
+          <div>
+            Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+          </div>
+          <div class="space-x-2 flex flex-wrap justify-end">
+            {% if page_obj.has_previous %}
+            <a href="?page=1{% if selected_building %}&building={{ selected_building }}{% endif %}{% if selected_floor %}&floor={{ selected_floor.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" 
+              class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150" title="First page">
+              <i class="fas fa-chevron-left mr-1"></i><i class="fas fa-chevron-left"></i>
+            </a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if selected_building %}&building={{ selected_building }}{% endif %}{% if selected_floor %}&floor={{ selected_floor.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" 
+              class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">
+              <i class="fas fa-chevron-left mr-1"></i>Prev
+            </a>
+            {% endif %}
+            
+            {% with num_pages=page_obj.paginator.num_pages current=page_obj.number %}
+              {% if current > 3 %}
+                <a href="?page=1{% if selected_building %}&building={{ selected_building }}{% endif %}{% if selected_floor %}&floor={{ selected_floor.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" 
+                  class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">1</a>
+                <span class="px-2 py-1">...</span>
+              {% endif %}
+              
+              {% for i in page_obj.paginator.page_range %}
+                {% if i >= current|add:-2 and i <= current|add:2 %}
+                  {% if i == current %}
+                    <span class="px-3 py-1 border border-blue-500 bg-blue-600/50 text-white rounded-md">{{ i }}</span>
+                  {% else %}
+                    <a href="?page={{ i }}{% if selected_building %}&building={{ selected_building }}{% endif %}{% if selected_floor %}&floor={{ selected_floor.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" 
+                      class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">{{ i }}</a>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+              
+              {% if current < num_pages|add:-2 %}
+                <span class="px-2 py-1">...</span>
+                <a href="?page={{ num_pages }}{% if selected_building %}&building={{ selected_building }}{% endif %}{% if selected_floor %}&floor={{ selected_floor.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" 
+                  class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">{{ num_pages }}</a>
+              {% endif %}
+            {% endwith %}
+
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if selected_building %}&building={{ selected_building }}{% endif %}{% if selected_floor %}&floor={{ selected_floor.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" 
+              class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">
+              Next<i class="fas fa-chevron-right ml-1"></i>
+            </a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if selected_building %}&building={{ selected_building }}{% endif %}{% if selected_floor %}&floor={{ selected_floor.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" 
+              class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150" title="Last page">
+              <i class="fas fa-chevron-right"></i><i class="fas fa-chevron-right ml-1"></i>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      
+      <!-- Room Preview Modal -->
+      <div id="adminRoomPreviewModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto border border-slate-700">
+          <div class="p-6">
+            <div class="flex justify-between items-start mb-4">
+              <h2 id="previewRoomTitle" class="text-2xl font-bold text-white"></h2>
+              <button onclick="closeAdminRoomPreview()" class="text-slate-400 hover:text-white text-2xl">×</button>
+            </div>
+            
+            <!-- Room Photos -->
+            <div id="previewPhotosContainer" class="mb-4">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <img id="previewRoomPhoto" src="" alt="Room photo" class="w-full h-40 object-cover rounded-lg">
+              </div>
+            </div>
+            
+            <!-- Room Info -->
+            <div class="space-y-3 text-slate-300">
+              <div>
+                <p class="text-sm text-slate-400">Room Number</p>
+                <p id="previewRoomNumber" class="text-white font-semibold"></p>
+              </div>
+              <div>
+                <p class="text-sm text-slate-400">Room Type</p>
+                <p id="previewRoomType" class="text-white font-semibold"></p>
+              </div>
+              <div>
+                <p class="text-sm text-slate-400">Description</p>
+                <p id="previewRoomDescription" class="text-white"></p>
+              </div>
+              
+              <!-- Ratings Section -->
+              <div class="pt-3 border-t border-slate-700">
+                <div class="flex items-center gap-2 mb-2">
+                  <h3 class="text-base font-semibold text-white">Ratings</h3>
+                  <div class="flex items-center gap-1">
+                    <div class="text-yellow-400">
+                      <i id="previewAverageStars" class="fas fa-star"></i>
+                    </div>
+                    <span id="previewAverageRating" class="text-sm font-semibold text-white">--</span>
+                    <span id="previewRatingCount" class="text-xs text-slate-400">ratings</span>
+                  </div>
+                </div>
+                <div id="previewRecentRatings" class="space-y-2 max-h-32 overflow-y-auto"></div>
+              </div>
+            </div>
+            
+            <button onclick="closeAdminRoomPreview()" class="mt-6 w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg">Close</button>
+          </div>
+        </div>
+      </div>
+  
+      <footer class="mt-10 text-center text-xs text-slate-400">Room Management — Click View to preview, Edit to modify room details or Delete to remove.</footer>
+
+      <script>
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function editRoom(roomId) {
+            window.location.href = "{% url 'admin_CRUD_Rooms' %}" + "?room_id=" + roomId;
+        }
+
+        async function deleteRoom(roomId) {
+            if (!confirm('Are you sure you want to delete this room?')) return;
+            
+            try {
+                const response = await fetch(`/api/delete/room/${roomId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const data = await response.json();
+                    alert(data.message || 'Error deleting room');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting room');
+            }
+        }
+
+        function filterByFloor() {
+            const floorId = document.getElementById('floorFilter').value;
+            if (floorId) {
+                window.location.href = "?floor=" + floorId;
+            } else {
+                window.location.href = "{% url 'admin_rooms_list' %}";
+            }
+        }
+
+        // Set the current floor filter if URL has floor parameter
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const floorId = urlParams.get('floor');
+            if (floorId) {
+                document.getElementById('floorFilter').value = floorId;
+            }
+        });
+
+        // View room preview (Admin)
+        async function viewRoomPreview(roomId) {
+          try {
+            // Fetch room data
+            const roomResponse = await fetch(`/api/room/${roomId}/`);
+            if (!roomResponse.ok) {
+              alert('Error loading room data');
+              return;
+            }
+            const roomData = await roomResponse.json();
+
+            // Fetch ratings data
+            const ratingsResponse = await fetch(`/api/room/${roomId}/ratings/`);
+            let ratingsData = { average_rating: 0, total_ratings: 0, feedbacks: [] };
+            if (ratingsResponse.ok) {
+              ratingsData = await ratingsResponse.json();
+            }
+
+            // Populate room info
+            document.getElementById('previewRoomTitle').textContent = roomData.name || 'Room';
+            document.getElementById('previewRoomNumber').textContent = roomData.number || 'N/A';
+            document.getElementById('previewRoomType').textContent = roomData.type || 'N/A';
+            document.getElementById('previewRoomDescription').textContent = roomData.description || 'No description available';
+
+            // Display photos
+            const photosContainer = document.getElementById('previewPhotosContainer');
+            if (roomData.photos && roomData.photos.length > 0) {
+              photosContainer.innerHTML = '<div class="grid grid-cols-1 md:grid-cols-3 gap-3">';
+              roomData.photos.forEach(photo => {
+                photosContainer.innerHTML += `<img src="${photo.url}" alt="Room photo" class="w-full h-40 object-cover rounded-lg">`;
+              });
+              photosContainer.innerHTML += '</div>';
+            } else {
+              photosContainer.innerHTML = '<p class="text-slate-400 text-sm italic text-center py-4">No photos available</p>';
+            }
+
+            // Display ratings
+            const avgStars = Math.round(ratingsData.average_rating * 2) / 2;
+            let starHtml = '';
+            for (let i = 1; i <= 5; i++) {
+              if (i <= Math.floor(avgStars)) {
+                starHtml += '<i class="fas fa-star text-yellow-400"></i>';
+              } else if (i - avgStars < 1) {
+                starHtml += '<i class="fas fa-star-half-alt text-yellow-400"></i>';
+              } else {
+                starHtml += '<i class="far fa-star text-yellow-400"></i>';
+              }
+            }
+            document.getElementById('previewAverageStars').innerHTML = starHtml;
+            document.getElementById('previewAverageRating').textContent = avgStars.toFixed(1);
+            document.getElementById('previewRatingCount').textContent = `${ratingsData.total_ratings} rating${ratingsData.total_ratings !== 1 ? 's' : ''}`;
+
+            // Display recent ratings
+            const ratingsContainer = document.getElementById('previewRecentRatings');
+            if (ratingsData.feedbacks && ratingsData.feedbacks.length > 0) {
+              ratingsContainer.innerHTML = ratingsData.feedbacks.slice(0, 3).map(feedback => {
+                let stars = '';
+                for (let i = 1; i <= 5; i++) {
+                  if (i <= feedback.rating) {
+                    stars += '<i class="fas fa-star text-yellow-400 text-xs"></i>';
+                  } else {
+                    stars += '<i class="far fa-star text-yellow-400 text-xs"></i>';
+                  }
+                }
+                return `
+                  <div class="bg-slate-700/30 p-2 rounded text-xs">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-slate-300 font-medium">${feedback.user_name}</span>
+                      <div class="text-yellow-400">${stars}</div>
+                    </div>
+                    <p class="text-slate-400">${feedback.comment || 'No comment'}</p>
+                  </div>
+                `;
+              }).join('');
+            } else {
+              ratingsContainer.innerHTML = '<p class="text-slate-400 text-xs italic text-center py-2">No ratings yet</p>';
+            }
+
+            // Show modal
+            document.getElementById('adminRoomPreviewModal').classList.remove('hidden');
+          } catch (error) {
+            console.error('Error loading room preview:', error);
+            alert('Error loading room preview');
+          }
+        }
+
+        function closeAdminRoomPreview() {
+          document.getElementById('adminRoomPreviewModal').classList.add('hidden');
+        }
+      </script>
+{% endblock %}

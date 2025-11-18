@@ -1,0 +1,677 @@
+{% extends 'UMAP_App/Users/Users_base.html' %}
+{% load static %}
+
+{% block title %}Student Schedule Dashboard{% endblock %}
+
+{% block body_class %}min-h-screen overflow-auto{% endblock %}
+
+{% block extra_head %}
+{{ block.super }}
+<script src="{% static 'UMAP_App/js/UI/mobile-menu.js' %}"></script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  #locationSidebar {
+    position: fixed;
+    right: 0;
+    top: 0;
+    width: 24rem;
+    height: 100vh;
+    background-color: rgba(31, 41, 55, 0.95);
+    backdrop-filter: blur(8px);
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 50;
+    overflow-y: auto;
+    pointer-events: none;
+    box-shadow: -4px 0 15px rgba(0, 0, 0, 0.3);
+  }
+
+  #locationSidebar.show {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  #locationSidebar .location-card {
+    background-color: rgb(55, 65, 81);
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    transition: transform 0.2s ease;
+  }
+
+  #locationSidebar .location-card:hover {
+    transform: translateY(-2px);
+  }
+
+  /* schedule styles */
+  .schedule-card { transition: all 0.18s ease; }
+  .schedule-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,0.25); }
+  .day-tab.active { background-color: #1E40AF; color: white; }
+  .day-tab:hover:not(.active) { background-color: #2563EB; color: white; }
+  .stats-card { transition: all 0.18s ease; }
+  .stats-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.12); }
+  /* content spacing */
+  .main-content {
+    margin-left: calc(16rem + 2rem);
+    padding-top: 1rem;
+  }
+
+  /* Responsive Styles */
+  @media (max-width: 1024px) {
+    .main-content { 
+      margin-left: 1rem !important;
+      margin-right: 1rem !important;
+    }
+  }
+
+  /* Mobile Styles */
+  @media (max-width: 768px) {
+    .main-content {
+      margin: 0.5rem !important;
+    }
+    
+    /* Make action buttons stack on mobile */
+    .action-buttons {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+
+    /* Adjust day tabs scrolling */
+    .day-tabs-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 0.5rem;
+    }
+    
+    .day-tabs-container::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .day-tabs-wrap {
+      display: flex;
+      width: max-content;
+      padding: 0 0.25rem;
+    }
+
+    /* Schedule card adjustments */
+    .schedule-card {
+      padding: 1rem !important;
+    }
+
+    .schedule-card h3 {
+      font-size: 1rem !important;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+
+
+<!-- Location Details Sidebar -->
+<div id="locationSidebar" class="fixed right-0 top-0 w-96 h-full bg-gray-800 shadow-xl overflow-y-auto transform translate-x-full transition-transform duration-300 ease-in-out z-[50] pointer-events-none">
+    <div class="p-6 pointer-events-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h2 id="buildingTitle" class="text-xl font-bold text-white">Building Information</h2>
+            <button onclick="hideLocationSidebar()" class="text-gray-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Location Cards Container -->
+        <div id="locationCards" class="space-y-4">
+            <!-- Location cards will be inserted here by JavaScript -->
+        </div>
+    </div>
+</div>
+
+<!-- Provide schedule JSON to JS in a predictable global var -->
+<script>
+  window._SCHEDULE_RAW = {{ schedule_data|safe|default:"[]" }};
+  // Delete URL template (Django will render /delete/<id>/ with 0 placeholder)
+  window._DELETE_URL_TEMPLATE = "{% url 'delete_class' 0 %}";
+</script>
+
+<div class="main-content min-h-screen bg-gray-900 text-white">
+  <div class="bg-gray-800/50 backdrop-blur-sm shadow-lg rounded-xl mb-4">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 py-4">
+        <h1 class="text-xl font-bold">My Class Schedule</h1>
+        <div class="action-buttons w-full sm:w-auto grid sm:flex items-center gap-2">
+          <a href="{% url 'export_schedule' 'excel' %}" class="px-3 py-2 rounded bg-green-600 text-center text-sm">Excel</a>
+          <a href="{% url 'export_schedule' 'pdf' %}" class="px-3 py-2 rounded bg-red-600 text-center text-sm">PDF</a>
+          <button onclick="document.getElementById('uploadInput').click()" class="px-3 py-2 rounded bg-purple-600 text-sm">Upload</button>
+          <button onclick="openAddClassModal()" class="px-3 py-2 rounded bg-indigo-600 text-sm">+ Add</button>
+          <form action="{% url 'delete_all_schedules' %}" method="post" class="inline">
+            {% csrf_token %}
+            <button type="submit" onclick="return confirm('Delete all schedules?')" class="w-full px-3 py-2 rounded bg-red-600 text-sm">Clear</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Day tabs -->
+    <div class="day-tabs-container mb-4">
+      <div class="day-tabs-wrap">
+        <button data-day="Monday" class="day-tab px-4 py-1.5 rounded bg-blue-600 whitespace-nowrap">Mon</button>
+        <button data-day="Tuesday" class="day-tab px-4 py-1.5 rounded bg-gray-800/50 text-gray-300 whitespace-nowrap">Tue</button>
+        <button data-day="Wednesday" class="day-tab px-4 py-1.5 rounded bg-gray-800/50 text-gray-300 whitespace-nowrap">Wed</button>
+        <button data-day="Thursday" class="day-tab px-4 py-1.5 rounded bg-gray-800/50 text-gray-300 whitespace-nowrap">Thu</button>
+        <button data-day="Friday" class="day-tab px-4 py-1.5 rounded bg-gray-800/50 text-gray-300 whitespace-nowrap">Fri</button>
+        <button data-day="Saturday" class="day-tab px-4 py-1.5 rounded bg-gray-800/50 text-gray-300 whitespace-nowrap">Sat</button>
+        <button data-day="Sunday" class="day-tab px-4 py-1.5 rounded bg-gray-800/50 text-gray-300 whitespace-nowrap">Sun</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2">
+        <div class="bg-gray-800/30 rounded-lg p-4 mb-4">
+          <h2 id="currentDayTitle" class="text-xl font-bold mb-4">Monday Schedule</h2>
+          <div id="scheduleList" class="space-y-3 max-h-[60vh] overflow-y-auto"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="bg-gray-800 rounded-lg p-4 mb-4">
+          <h3 class="text-sm font-medium text-gray-300 mb-3">Schedule Stats</h3>
+          <div class="space-y-2">
+            <div class="stats-card p-3 bg-blue-900/50 rounded">
+              <div class="text-xs text-blue-200">Total Classes</div>
+              <div id="totalClasses" class="text-xl font-semibold">0</div>
+            </div>
+            <div class="stats-card p-3 bg-green-900/50 rounded">
+              <div class="text-xs text-green-200">Total Hours</div>
+              <div id="totalHours" class="text-xl font-semibold">0</div>
+            </div>
+            <div class="stats-card p-3 bg-purple-900/50 rounded">
+              <div class="text-xs text-purple-200">Break Time</div>
+              <div id="breakTime" class="text-xl font-semibold">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-4">
+          <h3 class="text-sm font-medium text-gray-300 mb-3">Filters</h3>
+          <div class="space-y-3">
+            <div>
+              <label class="text-xs text-gray-300 block mb-1">Time Period</label>
+              <select id="timeFilter" class="w-full bg-gray-700 text-white rounded px-2 py-1">
+                <option value="all">All Times</option>
+                <option value="morning">Morning (7-12)</option>
+                <option value="afternoon">Afternoon (12-17)</option>
+                <option value="evening">Evening (17-24)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-gray-300 block mb-1">Subject</label>
+              <select id="subjectFilter" class="w-full bg-gray-700 text-white rounded px-2 py-1">
+                <option value="all">All Subjects</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Class Modal (simple) -->
+  <div id="classModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-slate-800 rounded-lg max-w-md w-full p-6 border border-slate-700/50 shadow-xl">
+      <form method="post" action="{% url 'add_class' %}" onsubmit="return validateClassForm()" id="classForm">
+        {% csrf_token %}
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-medium text-white">Add New Class</h3>
+          <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-white">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label for="course_code" class="block text-sm font-medium text-slate-300">Course Code</label>
+            <input id="course_code" name="course_code" required
+                   class="mt-1 block w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          </div>
+          <div>
+            <label for="subject_name" class="block text-sm font-medium text-slate-300">Subject Name</label>
+            <input id="subject_name" name="subject" required
+                   class="mt-1 block w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          </div>
+          <div>
+            <label for="room" class="block text-sm font-medium text-slate-300">Room</label>
+            <input id="room" name="room" required
+                   class="mt-1 block w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          </div>
+          <div>
+            <label for="day" class="block text-sm font-medium text-slate-300">Day</label>
+            <select id="day" name="day" required
+                    class="mt-1 block w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <option value="">Select a day</option>
+              <option value="Monday">Monday</option>
+              <option value="Tuesday">Tuesday</option>
+              <option value="Wednesday">Wednesday</option>
+              <option value="Thursday">Thursday</option>
+              <option value="Friday">Friday</option>
+              <option value="Saturday">Saturday</option>
+              <option value="Sunday">Sunday</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="start_time" class="block text-sm font-medium text-slate-300">Start Time</label>
+              <input id="start_time" name="start" type="time" required
+                     class="mt-1 block w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+            <div>
+              <label for="end_time" class="block text-sm font-medium text-slate-300">End Time</label>
+              <input id="end_time" name="end" type="time" required
+                     class="mt-1 block w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Color</label>
+            <input id="selectedColor" name="color" value="blue" type="hidden">
+            <div class="flex gap-2">
+              <button type="button" onclick="selectColor('blue')" class="w-8 h-8 rounded-full bg-blue-600 hover:ring-2 ring-white"></button>
+              <button type="button" onclick="selectColor('green')" class="w-8 h-8 rounded-full bg-green-600 hover:ring-2 ring-white"></button>
+              <button type="button" onclick="selectColor('purple')" class="w-8 h-8 rounded-full bg-purple-600 hover:ring-2 ring-white"></button>
+              <button type="button" onclick="selectColor('red')" class="w-8 h-8 rounded-full bg-red-600 hover:ring-2 ring-white"></button>
+              <button type="button" onclick="selectColor('yellow')" class="w-8 h-8 rounded-full bg-yellow-500 hover:ring-2 ring-white"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+          <button type="button" onclick="closeModal()" 
+                  class="px-4 py-2 bg-slate-700 text-slate-300 rounded hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500">
+            Cancel
+          </button>
+          <button type="submit"
+                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            Add Class
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Upload form -->
+  <form id="uploadForm" action="{% url 'upload_schedule' %}" method="post" enctype="multipart/form-data" class="hidden">
+    {% csrf_token %}
+    <input id="uploadInput" type="file" name="schedule_pdf" accept="application/pdf" onchange="this.form.submit()">
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  // Helpful small utilities
+  function qs(sel, root = document) { return root.querySelector(sel); }
+  function qsa(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
+  function format12(timeStr) {
+    // expects "HH:MM" 24h string; fallbacks supported
+    if (!timeStr) return '';
+    const [h,m] = timeStr.split(':');
+    if (h === undefined) return timeStr;
+    let hh = parseInt(h,10); const mm = (m||'00');
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    hh = hh % 12; hh = hh ? hh : 12;
+    return `${hh}:${String(mm).padStart(2,'0')} ${ampm}`;
+  }
+
+  // Normalize incoming schedule objects (support different keys people used)
+  function normalizeSchedules(raw) {
+    if (!raw) return [];
+    // If string (rare), try parse
+    let arr = raw;
+    if (typeof raw === 'string') {
+      try { arr = JSON.parse(raw); } catch(e) { arr = []; }
+    }
+    if (!Array.isArray(arr)) return [];
+
+    return arr.map(item => {
+      return {
+        id: item.id || item.pk || null,
+        course_code: item.course_code || item.subject || item.course || '',
+        subject_name: item.subject_name || item.subject || item.title || '',
+        day: item.day || item.days || item.day_of_week || 'Monday',
+        start_time: item.start_time || item.start || item.start_time || (item.start && item.start.split && item.start.split('T')[1] ? item.start.split('T')[1].slice(0,5) : ''),
+        end_time: item.end_time || item.end || item.end_time || '',
+        room: item.room || item.room_number || item.venue || '',
+        color: item.color || item.col || 'blue'
+      };
+    });
+  }
+
+  // Build schedule manager
+  function ScheduleManager(raw) {
+    this.raw = raw || [];
+    this.schedules = normalizeSchedules(this.raw);
+    this.currentDay = 'Monday';
+    this.buildIndex();
+  }
+
+  ScheduleManager.prototype.buildIndex = function () {
+    this.byDay = { Monday:[], Tuesday:[], Wednesday:[], Thursday:[], Friday:[], Saturday:[], Sunday:[] };
+    this.schedules.forEach(s => {
+      if (!this.byDay[s.day]) this.byDay[s.day] = [];
+      this.byDay[s.day].push(s);
+    });
+    // sort each day
+    Object.keys(this.byDay).forEach(d => {
+      this.byDay[d].sort((a,b) => (a.start_time || '').localeCompare(b.start_time || ''));
+    });
+  };
+
+  ScheduleManager.prototype.render = function () {
+    const scheduleList = qs('#scheduleList');
+    if (!scheduleList) return;
+    scheduleList.innerHTML = '';
+
+    const dayArr = (this.byDay[this.currentDay] || []).slice();
+
+    // Apply selected filters
+    const timeFilter = qs('#timeFilter') ? qs('#timeFilter').value : 'all';
+    const subjectFilter = qs('#subjectFilter') ? qs('#subjectFilter').value : 'all';
+
+    let filtered = dayArr.filter(s => {
+      if (subjectFilter !== 'all' && s.subject_name !== subjectFilter) return false;
+      if (timeFilter !== 'all') {
+        const hour = parseInt((s.start_time||'00').split(':')[0]||0, 10);
+        if (timeFilter === 'morning' && !(hour >= 7 && hour < 12)) return false;
+        if (timeFilter === 'afternoon' && !(hour >= 12 && hour < 17)) return false;
+        if (timeFilter === 'evening' && !(hour >= 17)) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      scheduleList.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-12 text-gray-400">
+          <i class="fas fa-calendar-day text-4xl mb-3"></i>
+          <div>No classes scheduled for ${this.currentDay}</div>
+        </div>
+      `;
+      this.updateStats([]);
+      return;
+    }
+
+    // render cards
+    const frag = document.createDocumentFragment();
+    filtered.forEach(s => {
+      const card = document.createElement('div');
+      const bg = s.color ? `bg-${s.color}-600` : 'bg-blue-600';
+      card.className = `schedule-card ${bg} rounded-lg p-4 text-white`;
+      card.setAttribute('data-id', s.id);
+      card.innerHTML = `
+        <div class="flex justify-between">
+          <div class="flex-1 pr-3">
+            <div class="flex justify-between items-start">
+              <h3 class="text-lg font-bold">${escapeHtml(s.course_code)}</h3>
+              <div class="flex gap-2">
+                <button onclick="navigateToRoom('${escapeHtml(s.room)}')" class="px-2 py-1 rounded bg-blue-500 text-sm hover:bg-blue-600 transition-colors">
+                  <i class="fas fa-location-arrow mr-1"></i>Navigate
+                </button>
+                <form method="post" action="${window._DELETE_URL_TEMPLATE.replace('/0/', '/'+(s.id||'0')+'/')}" onsubmit="return confirm('Delete this class?')" class="inline">
+                  {% csrf_token %}
+                  <button type="submit" class="px-2 py-1 rounded bg-red-500 text-sm hover:bg-red-600 transition-colors">Delete</button>
+                </form>
+              </div>
+            </div>
+            <div class="text-sm opacity-90 mt-2">${escapeHtml(s.subject_name)}</div>
+            <div class="text-xs mt-2 opacity-80"><i class="far fa-clock mr-1"></i> ${format12(s.start_time)} - ${format12(s.end_time)} <span class="mx-2">•</span> <i class="fas fa-map-marker-alt mr-1"></i> ${escapeHtml(s.room||'TBA')}</div>
+          </div>
+        </div>
+      `;
+      frag.appendChild(card);
+    });
+    scheduleList.appendChild(frag);
+
+    this.updateStats(filtered);
+  };
+
+  ScheduleManager.prototype.updateStats = function(dayArr) {
+    const arr = dayArr || (this.byDay[this.currentDay]||[]);
+    qs('#totalClasses').textContent = arr.length;
+    // hours
+    let hours = 0;
+    for (let s of arr) {
+      if (s.start_time && s.end_time) {
+        const [sh, sm] = s.start_time.split(':').map(Number);
+        const [eh, em] = s.end_time.split(':').map(Number);
+        const dur = ((eh*60+ (em||0)) - (sh*60 + (sm||0))) / 60;
+        if (!isNaN(dur)) hours += Math.max(0,dur);
+      }
+    }
+    qs('#totalHours').textContent = `${Math.round(hours*10)/10}h`;
+    // break time: sum gaps between sorted classes
+    const sorted = (arr.slice()).sort((a,b) => (a.start_time||'').localeCompare(b.start_time||''));
+    let breakTime = 0;
+    for (let i=1;i<sorted.length;i++){
+      const prevEnd = sorted[i-1].end_time.split(':').map(Number);
+      const currStart = sorted[i].start_time.split(':').map(Number);
+      const gap = ((currStart[0]*60 + (currStart[1]||0)) - (prevEnd[0]*60 + (prevEnd[1]||0))) / 60;
+      if (gap>0) breakTime += gap;
+    }
+    qs('#breakTime').textContent = `${Math.round(breakTime*10)/10}h`;
+  };
+
+  // Helper to populate subject filter
+  ScheduleManager.prototype.populateSubjectFilter = function() {
+    const subjSet = new Set(this.schedules.map(s=>s.subject_name).filter(Boolean));
+    const sel = qs('#subjectFilter');
+    if (!sel) return;
+    sel.innerHTML = '<option value="all">All Subjects</option>';
+    Array.from(subjSet).sort().forEach(sub => {
+      const opt = document.createElement('option');
+      opt.value = sub; opt.textContent = sub;
+      sel.appendChild(opt);
+    });
+  };
+
+  // Escaping
+  function escapeHtml(s) {
+    if (!s && s !== 0) return '';
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  // Building location data
+const buildingLocations = {
+    'building1': {
+        title: 'Building 1',
+        locations: [
+            {
+                name: 'Gymnasium',
+                description: 'Multi-purpose indoor sports facility',
+                floor: '1st Floor'
+            },
+            {
+                name: 'Student Lounge',
+                description: 'Relaxation and study area',
+                floor: 'Ground Floor'
+            }
+        ]
+    },
+    'hpsb': {
+        title: 'HPSB',
+        locations: [
+            {
+                name: 'Gymnasium',
+                description: 'Indoor sports facility with basketball courts',
+                floor: '1st Floor'
+            },
+            {
+                name: 'Basketball Court',
+                description: 'Outdoor court with night lighting',
+                floor: 'Ground Floor'
+            }
+        ]
+    }
+};
+
+function createLocationCard(location) {
+    return `
+        <div class="location-card">
+            <div class="p-4">
+                <h3 class="text-lg font-bold text-white">${location.name}</h3>
+                <p class="text-sm text-blue-300 mb-2">${location.floor}</p>
+                <p class="text-gray-300 text-sm">${location.description}</p>
+            </div>
+        </div>
+    `;
+}
+
+window.showBuildingLocations = function(buildingId) {
+    console.log('Showing locations for:', buildingId);
+    const building = buildingLocations[buildingId] || {
+        title: buildingId.replace(/([A-Z])/g, ' $1').trim(),
+        locations: [{
+            name: 'Main Area',
+            description: 'Information will be updated soon.',
+            floor: 'All Floors'
+        }]
+    };
+
+    // Update sidebar title
+    document.getElementById('buildingTitle').textContent = building.title;
+
+    // Clear and populate location cards
+    const locationCards = document.getElementById('locationCards');
+    locationCards.innerHTML = '';
+    building.locations.forEach(location => {
+        locationCards.innerHTML += createLocationCard(location);
+    });
+
+    // Show sidebar
+    const sidebar = document.getElementById('locationSidebar');
+    requestAnimationFrame(() => {
+        sidebar.classList.remove('translate-x-full');
+        sidebar.style.pointerEvents = 'auto';
+    });
+}
+
+window.hideLocationSidebar = function() {
+    const sidebar = document.getElementById('locationSidebar');
+    sidebar.classList.add('translate-x-full');
+    setTimeout(() => {
+        sidebar.style.pointerEvents = 'none';
+    }, 300);
+}
+
+// wire UI
+document.addEventListener('DOMContentLoaded', function() {
+    // Set up location sidebar click-outside handler
+    document.addEventListener('click', (e) => {
+        const sidebar = document.getElementById('locationSidebar');
+        const isClickInside = sidebar.contains(e.target);
+        const isButtonClick = e.target.closest('[id^="Building"], [id="HPSB"], [id="Oval"], [id="Admin Building"], [id="March House"]');
+        
+        if (!isClickInside && !isButtonClick && !sidebar.classList.contains('translate-x-full')) {
+            hideLocationSidebar();
+        }
+    });
+
+    // parse server data (it's already JSON in window._SCHEDULE_RAW)
+    const raw = window._SCHEDULE_RAW || [];
+    const manager = new ScheduleManager(raw);
+
+    // fill subject filter
+    manager.populateSubjectFilter();
+
+    // set initial active tab
+    function setActiveTab(day) {
+      qsa('.day-tab').forEach(btn => {
+        if (btn.getAttribute('data-day') === day) { btn.classList.add('active'); btn.classList.remove('bg-gray-800/50','text-gray-300'); }
+        else { btn.classList.remove('active'); btn.classList.add('bg-gray-800/50','text-gray-300'); }
+      });
+      qs('#currentDayTitle').textContent = `${day} Schedule`;
+    }
+
+    // default to Monday but if no Monday schedules, try to pick a day that has schedules
+    let defaultDay = 'Monday';
+    if ((manager.byDay[defaultDay]||[]).length === 0) {
+      for (let d of Object.keys(manager.byDay)) {
+        if ((manager.byDay[d]||[]).length > 0) { defaultDay = d; break; }
+      }
+    }
+    manager.currentDay = defaultDay;
+    setActiveTab(defaultDay);
+    manager.render();
+
+    // day tab click
+    qsa('.day-tab').forEach(btn => btn.addEventListener('click', e => {
+      const day = btn.getAttribute('data-day');
+      if (!day) return;
+      manager.currentDay = day;
+      setActiveTab(day);
+      manager.render();
+    }));
+
+    // filters
+    const timeFilter = qs('#timeFilter'); if (timeFilter) timeFilter.addEventListener('change', ()=> manager.render());
+    const subjectFilter = qs('#subjectFilter'); if (subjectFilter) subjectFilter.addEventListener('change', ()=> manager.render());
+
+    // modal open/close helpers
+    window.openAddClassModal = function() {
+      qs('#classModal').classList.remove('hidden');
+      qs('#classModal').classList.add('flex');
+    };
+    window.closeModal = function() {
+      qs('#classModal').classList.add('hidden');
+      qs('#classModal').classList.remove('flex');
+    };
+    window.selectColor = function(c) {
+      qs('#selectedColor').value = c;
+      qsa('[onclick^="selectColor"]').forEach(b=>b.classList.remove('ring-2'));
+      // try to highlight chosen button by adding ring-2 (simple)
+      // can't easily find the specific button without further attributes, so not required
+    };
+
+    // validateClassForm: simple validation (the server still enforces)
+    window.validateClassForm = function() {
+      const course = qs('#course_code').value.trim();
+      const subj = qs('#subject_name').value.trim();
+      const day = qs('#day').value;
+      const start = qs('#start_time').value;
+      const end = qs('#end_time').value;
+      if (!course || !subj || !day || !start || !end) {
+        alert('Please fill required fields');
+        return false;
+      }
+      if (end <= start) { alert('End time must be after start'); return false; }
+      return true;
+    };
+
+    // Function to handle room navigation
+    window.navigateToRoom = function(roomNumber) {
+      if (!roomNumber || roomNumber === 'TBA') {
+        alert('Room location not available');
+        return;
+      }
+      
+      // Store the room number in sessionStorage for the map view to use
+      sessionStorage.setItem('navigateToRoom', roomNumber);
+      
+      // Redirect to the map view
+      window.location.href = "{% url 'default_view' %}";
+    };
+
+    // small debug log
+    console.log('Schedule manager initialized', manager);
+    window.scheduleManager = manager;
+  });
+
+})();
+</script>
+{% endblock %}

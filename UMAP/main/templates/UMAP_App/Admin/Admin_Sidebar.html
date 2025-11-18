@@ -1,0 +1,195 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body {
+      background-color: #0f172a;
+    }
+    .sidebar {
+      transition: all 0.3s ease;
+      min-width: 260px;
+      background-color: rgba(30, 41, 59, 0.5);
+    }
+    .sidebar.collapsed {
+      min-width: 80px;
+      width: 80px;
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+    .sidebar.collapsed .text-label,
+    .sidebar.collapsed .umap-title,
+    .sidebar.collapsed .admin-card .admin-info {
+      display: none;
+    }
+    .sidebar.collapsed nav ul li a {
+      justify-content: center;
+    }
+    .sidebar.collapsed nav ul li a svg {
+      margin: 0;
+    }
+    .toggle-btn {
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .toggle-btn:hover {
+      transform: scale(1.05);
+    }
+    .nav-link {
+      transition: all 0.2s ease;
+    }
+    .nav-link:hover {
+      background-color: rgba(30, 41, 59, 0.8);
+      transform: translateX(4px);
+    }
+    .nav-link.active {
+      background-color: rgba(37, 99, 235, 0.2);
+      border-left: 3px solid #3b82f6;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-white font-sans">
+  <div class="min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside id="adminSidebar" class="sidebar flex flex-col shadow-lg p-6 gap-6 border-r border-slate-700/50">
+
+      <!-- Logo Header -->
+      <div id="toggleSidebarBtn" class="flex items-center gap-3 toggle-btn">
+        <img src="{% static 'UMAP_App/images/logo.png' %}" alt="UMAP Logo" class="w-10 h-10 rounded-lg object-cover">
+        <h1 class="umap-title text-lg font-bold text-white">UMAP 1.0</h1>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="flex-1 mt-4">
+        <ul class="space-y-1">
+          <li>
+            <a href="{% url 'login' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-md text-slate-300 hover:text-white">
+              <i class="fas fa-home w-5 h-5"></i>
+              <span class="text-label">Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'admin_user_list' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-md text-slate-300 hover:text-white">
+              <i class="fas fa-users w-5 h-5"></i>
+              <span class="text-label">Users</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'admin_schedules_dashboard' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-md text-slate-300 hover:text-white">
+              <i class="fas fa-calendar-alt w-5 h-5"></i>
+              <span class="text-label">Schedules</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'admin_floor_list' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-md text-slate-300 hover:text-white">
+              <i class="fas fa-building w-5 h-5"></i>
+              <span class="text-label">Floors</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'admin_rooms_list' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-md text-slate-300 hover:text-white">
+              <i class="fas fa-door-open w-5 h-5"></i>
+              <span class="text-label">Rooms</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'admin_ratings' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-md text-slate-300 hover:text-white">
+              <i class="fas fa-star w-5 h-5"></i>
+              <span class="text-label">Ratings</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'admin_statistics' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-md text-slate-300 hover:text-white">
+              <i class="fas fa-chart-bar w-5 h-5"></i>
+              <span class="text-label">Statistics</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'admin_floor_list' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-md text-slate-300 hover:text-white">
+              <i class="fas fa-map w-5 h-5"></i>
+              <span class="text-label">Map</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- Admin Info and Logout Section -->
+      <div class="mt-auto space-y-4">
+        <!-- Admin Info Card -->
+        <div class="admin-card flex items-center p-3 bg-slate-800/50 rounded-xl border border-slate-700">
+          <a href="{% url 'admin_profile_view' %}" class="flex items-center gap-3 admin-info w-full">
+            {% if request.user.profile.profile_pic %}
+              <img src="{{ request.user.profile.profile_pic.url }}" alt="Admin Profile" 
+                   class="w-10 h-10 rounded-full object-cover border-2 border-blue-500">
+            {% else %}
+              <div class="w-10 h-10 rounded-full border-2 border-blue-500 bg-slate-700 flex items-center justify-center">
+                <span class="text-lg text-gray-400">{{ request.user.username.0|upper }}</span>
+              </div>
+            {% endif %}
+            <div>
+              <h2 class="text-sm font-semibold text-white">{{ request.user.get_full_name|default:request.user.username }}</h2>
+              <p class="text-xs text-slate-400">
+                {% if request.user.is_superuser %}
+                  Superuser
+                {% elif request.user.is_staff %}
+                  Administrator
+                {% else %}
+                  User
+                {% endif %}
+              </p>
+            </div>
+          </a>
+        </div>
+
+        <!-- Logout Button -->
+        <a href="{% url 'logout' %}" 
+           class="flex items-center justify-center gap-2 w-full px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 rounded-lg transition-all duration-150 border border-red-900/50 hover:border-red-600/50">
+          <i class="fas fa-sign-out-alt"></i>
+          <span class="text-sm font-medium">Logout</span>
+        </a>
+      </div>
+
+    </aside>
+
+    <!-- Success/Error Messages Toast -->
+    {% if messages %}
+    <div id="messageToast" class="fixed top-4 right-4 z-50">
+      {% for message in messages %}
+        <div class="{% if message.tags == 'success' %}bg-green-600{% else %}bg-red-600{% endif %} text-white px-6 py-4 rounded-lg shadow-lg mb-2 animate-fade-in-down">
+          <p class="flex items-center">
+            <i class="fas {% if message.tags == 'success' %}fa-check-circle{% else %}fa-exclamation-circle{% endif %} mr-2"></i>
+            {{ message }}
+          </p>
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6 transition-all duration-300">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- JS for Sidebar Toggle -->
+  <script>
+    const toggleBtn = document.getElementById('toggleSidebarBtn');
+    const sidebar = document.getElementById('adminSidebar');
+
+    // Load state from localStorage
+    if (localStorage.getItem('sidebar-collapsed') === 'true') {
+      sidebar.classList.add('collapsed');
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+      localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+    });
+  </script>
+</body>
+</html>

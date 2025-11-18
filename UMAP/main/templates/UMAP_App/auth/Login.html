@@ -1,0 +1,843 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  * { font-family: 'Inter', sans-serif; }
+  .toggle-active { 
+    border-bottom: 2px solid #3b82f6; 
+    font-weight: 600; 
+    color: #fff; 
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+  .glass-card { 
+    background: rgba(15,23,42,0.85); 
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(59, 130, 246, 0.1);
+  }
+  .btn-glow { 
+    background: linear-gradient(135deg,#3b82f6 0%,#1d4ed8 100%);
+    transition: all 0.2s ease;
+  }
+  .btn-glow:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+  .logo-glow { box-shadow: 0 0 25px rgba(59,130,246,0.3); }
+  .auth-container { 
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+  }
+  .auth-form input, .auth-form select { 
+    font-size: 0.9rem; 
+    padding: 0.55rem 0.75rem;
+    transition: border-color 0.2s ease;
+  }
+  .auth-form button { 
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+  }
+  .auth-form button:hover:not(.toggle-password-login):not(.toggle-password-signup) {
+    transform: translateY(-1px);
+  }
+  
+  /* Password toggle button positioning */
+  .toggle-password-login,
+  .toggle-password-signup {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .side-image-container { 
+    flex-shrink: 0;
+    position: relative;
+  }
+  .side-image-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: linear-gradient(to right, rgba(15,23,42,0.5), transparent);
+    pointer-events: none;
+  }
+  .side-image-container img { 
+    height: 100%; 
+    width: 100%; 
+    object-fit: cover; 
+    border-top-left-radius: 1rem; 
+    border-bottom-left-radius: 1rem;
+  }
+  
+  /* Custom Select Styling */
+  select.custom-select {
+    appearance: none;
+    background-color: rgba(30, 41, 59, 0.7);
+    background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%223b82f6%22 stroke-width=%222.5%22%3e%3cpolyline points=%226 9 12 15 18 9%22%3e%3c/polyline%3e%3c/svg%3e');
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.2em 1.2em;
+    padding-right: 2.5rem;
+    border: 1.5px solid rgba(51, 65, 85, 0.8);
+    transition: all 0.2s ease;
+    max-height: 300px;
+  }
+  
+  select.custom-select:hover {
+    border-color: rgba(59, 130, 246, 0.6);
+    background-color: rgba(30, 41, 59, 0.9);
+  }
+  
+  select.custom-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background-color: rgba(30, 41, 59, 1);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  select.custom-select optgroup {
+    background-color: rgba(15, 23, 42, 0.95);
+    color: #cbd5e1;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.5rem 0;
+  }
+  
+  select.custom-select option {
+    background-color: rgba(30, 41, 59, 0.9);
+    color: #e2e8f0;
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+  }
+  
+  select.custom-select option:hover {
+    background-color: rgba(59, 130, 246, 0.3);
+  }
+  
+  select.custom-select option:checked {
+    background: linear-gradient(#3b82f6, #3b82f6);
+    background-color: #3b82f6;
+    color: white;
+  }
+  
+  /* Custom Dropdown for two-column layout */
+  .department-dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+  }
+  
+  .department-dropdown-button {
+    appearance: none;
+    background-color: rgba(30, 41, 59, 0.7);
+    background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%223b82f6%22 stroke-width=%222.5%22%3e%3cpolyline points=%226 9 12 15 18 9%22%3e%3c/polyline%3e%3c/svg%3e');
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.2em 1.2em;
+    padding-right: 2.5rem;
+    border: 1.5px solid rgba(51, 65, 85, 0.8);
+    border-radius: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    transition: all 0.2s ease;
+    color: #e2e8f0;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  
+  .department-dropdown-button:hover {
+    border-color: rgba(59, 130, 246, 0.6);
+    background-color: rgba(30, 41, 59, 0.9);
+  }
+  
+  .department-dropdown-button:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background-color: rgba(30, 41, 59, 1);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  .department-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: rgba(15, 23, 42, 0.95);
+    border: 1.5px solid rgba(51, 65, 85, 0.8);
+    border-top: none;
+    border-radius: 0 0 0.5rem 0.5rem;
+    margin-top: -1.5px;
+    display: none;
+    z-index: 50;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  
+  .department-dropdown-menu.active {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    padding: 1rem;
+    width: 120%;
+  }
+  
+  .department-column {
+    min-width: 0;
+  }
+  
+  .department-column-title {
+    font-weight: 600;
+    color: #cbd5e1;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+    text-align: center;
+  }
+  
+  .department-option {
+    padding: 0.5rem;
+    color: #e2e8f0;
+    cursor: pointer;
+    border-radius: 0.35rem;
+    transition: all 0.15s ease;
+    font-size: 0.85rem;
+  }
+  
+  .department-option:hover {
+    background-color: rgba(59, 130, 246, 0.2);
+    padding-left: 0.75rem;
+  }
+  
+  .department-option.selected {
+    background-color: rgba(59, 130, 246, 0.4);
+    color: #3b82f6;
+    font-weight: 500;
+  }
+</style>
+</style>
+<div class="flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl shadow-lg md:flex-row mx-auto my-10 auth-container">
+    <!-- Left Panel (Image Section for Desktop) -->
+    <div class="hidden md:block w-1/2 bg-gray-200 side-image-container relative">
+        <!-- 🔧 To change the side image, replace the image source below -->
+        <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c" alt="Campus view" />
+    </div>
+
+    <!-- Right Panel (Form Section) -->
+    <div class="w-full p-6 md:w-1/2 md:p-10 glass-card auth-form">
+        <!-- Django Messages -->
+        {% if messages %}
+        <div class="mb-6 space-y-2">
+            {% for message in messages %}
+            <div class="message-item p-4 rounded-lg border shadow-lg {% if message.tags == 'error' %}bg-red-900/80 border-red-800 text-red-100{% else %}bg-green-900/80 border-green-800 text-green-100{% endif %}">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle text-red-400{% else %}fa-check-circle text-green-400{% endif %}"></i>
+                        <span class="font-medium">{{ message }}</span>
+                    </div>
+                    <button class="p-1 hover:bg-white/10 rounded-lg transition-colors" onclick="this.closest('.message-item').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Toggle Buttons -->
+        <div class="mb-6 flex items-center justify-center space-x-4 border-b border-slate-600 pb-3">
+            <button id="loginTab" class="flex items-center space-x-2 text-gray-400 focus:outline-none transition-colors px-4 py-2 toggle-active">
+                <i class="fa-solid fa-key"></i>
+                <span>Login</span>
+            </button>
+            <button id="signupTab" class="flex items-center space-x-2 text-gray-400 focus:outline-none transition-colors px-4 py-2">
+                <i class="fa-solid fa-user-plus"></i>
+                <span>Sign Up</span>
+            </button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="space-y-4" method="post" novalidate>
+            {% csrf_token %}
+            <h2 class="text-center text-xl font-semibold text-white">Welcome!</h2>
+            <p class="text-center text-gray-300 text-sm">Please enter your details to login.</p>
+            <input type="hidden" name="next" value="{{ next|default:'' }}"
+            <input type="hidden" id="initialShowLogin" value="{{ show_login|yesno:'true,false' }}">
+            <input type="hidden" id="initialShowSignup" value="{{ show_signup|yesno:'true,false' }}">
+
+            {% if messages %}
+            <div class="space-y-2">
+                {% for message in messages %}
+                <div class="p-3 rounded-md {% if message.tags == 'error' %}bg-red-900/50 border-red-800/50 text-red-200{% else %}bg-green-900/50 border-green-800/50 text-green-200{% endif %} border">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div>
+                <label class="block text-sm font-medium text-gray-200">Email or Username</label>
+                <input type="text" name="username" placeholder="Email or Username" required 
+                    value="{{ request.session.preserved_username|default:form.username.value|default:'' }}"
+                    class="mt-1 w-full rounded-lg border border-slate-600 p-2 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none {% if form.errors.username %}border-red-500{% endif %}" />
+                {% if form.errors.username %}
+                <p class="mt-1 text-xs text-red-400">{{ form.errors.username|join:", " }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <div class="flex items-center justify-between">
+                    <label class="block text-sm font-medium text-gray-200">Password</label>
+                    <a href="#" class="text-xs text-gray-400 hover:underline">Forgot password?</a>
+                </div>
+                <div class="relative">
+                    <input type="password" name="password" placeholder="Enter your password" required 
+                        class="mt-1 w-full rounded-lg border border-slate-600 p-2 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none {% if form.errors.password %}border-red-500{% endif %}" />
+                    <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 toggle-password-login cursor-pointer" aria-label="Show/Hide Password">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    {% if form.errors.password %}
+                    <p class="mt-1 text-xs text-red-400">{{ form.errors.password|join:", " }}</p>
+                    {% endif %}
+                    {% if form.non_field_errors %}
+                    <p class="mt-1 text-xs text-red-400">{{ form.non_field_errors|join:", " }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <button type="submit" class="w-full rounded-lg p-2 text-white btn-glow">Log In</button>
+
+            <div class="flex items-center justify-center space-x-2">
+                <span class="h-px w-1/3 bg-gray-600"></span>
+                <span class="text-xs text-gray-400">OR</span>
+                <span class="h-px w-1/3 bg-gray-600"></span>
+            </div>
+
+            <!-- Messages are now shown at the top of the form -->
+            
+            <p class="text-center text-xs text-gray-300">
+                Don't have an account yet?
+                <a href="#" class="font-semibold text-white hover:underline" id="goSignup">Sign up</a>
+            </p>
+        </form>
+
+        <!-- Signup Form -->
+        <form id="signupForm" class="hidden space-y-4" method="post" action="{% url 'signup' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <h2 class="text-center text-xl font-semibold text-white">Create an account</h2>
+
+            <!-- Form content starts here -->
+
+            <div>
+                <label class="block text-sm font-medium text-gray-200">Username</label>
+                <input type="text" name="username" required placeholder="Choose a username" maxlength="24"
+                    value="{{ signup_form.username.value|default:'' }}"
+                    class="mt-1 w-full rounded-lg border border-slate-600 p-2 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none {% if signup_form.errors.username %}border-red-500{% endif %}" />
+                {% if signup_form.errors.username %}
+                <p class="mt-1 text-xs text-red-400">{{ signup_form.errors.username|join:", " }}</p>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div>
+                    <label class="block text-sm font-medium text-gray-200">First Name</label>
+                    <input type="text" name="first_name" required placeholder="First Name" maxlength="24"
+                        value="{{ signup_form.first_name.value|default:'' }}"
+                        class="mt-1 w-full rounded-lg border border-slate-600 p-2 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-200">Last Name</label>
+                    <input type="text" name="last_name" required placeholder="Last Name" maxlength="24"
+                        value="{{ signup_form.last_name.value|default:'' }}"
+                        class="mt-1 w-full rounded-lg border border-slate-600 p-2 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none" />
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-200">Email</label>
+                <input type="email" name="email" required placeholder="Email Address" maxlength="36"
+                    value="{{ signup_form.email.value|default:'' }}"
+                    class="mt-1 w-full rounded-lg border border-slate-600 p-2 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none {% if signup_form.errors.email %}border-red-500{% endif %}" />
+                {% if signup_form.errors.email %}
+                <p class="mt-1 text-xs text-red-400">{{ signup_form.errors.email|join:", " }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-200">Student ID</label>
+                <input type="text" name="student_id" id="studentIdInput" required placeholder="Student ID Number" 
+                    value="{{ signup_form.student_id.value|default:'' }}"
+                    class="mt-1 w-full rounded-lg border border-slate-600 p-2 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none {% if signup_form.errors.student_id %}border-red-500{% endif %}" />
+                {% if signup_form.errors.student_id %}
+                <p class="mt-1 text-xs text-red-400">{{ signup_form.errors.student_id|join:", " }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-200">Department</label>
+                <select name="department" required 
+                    class="mt-1 w-full rounded-lg border border-slate-600 p-2.5 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none {% if signup_form.errors.department %}border-red-500{% endif %}" style="appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%222%22%3e%3cpolyline points=%226 9 12 15 18 9%22%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.5em 1.5em; padding-right: 2.5rem;">
+                    <option value="" disabled {% if not signup_form.department.value %}selected{% endif %}>-- Select Department --</option>
+                    <option value="IT" {% if signup_form.department.value == 'IT' %}selected{% endif %}>Information Technology</option>
+                    <option value="Engineering" {% if signup_form.department.value == 'Engineering' %}selected{% endif %}>Engineering</option>
+                    <option value="Business" {% if signup_form.department.value == 'Business' %}selected{% endif %}>Business</option>
+                    <option value="Arts" {% if signup_form.department.value == 'Arts' %}selected{% endif %}>Arts</option>
+                </select>
+                {% if signup_form.errors.department %}
+                <p class="mt-1 text-xs text-red-400">{{ signup_form.errors.department|join:", " }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-200">Year Level</label>
+                <select name="year_level" required 
+                    class="mt-1 w-full rounded-lg border border-slate-600 p-2.5 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none {% if signup_form.errors.year_level %}border-red-500{% endif %}" style="appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%222%22%3e%3cpolyline points=%226 9 12 15 18 9%22%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.5em 1.5em; padding-right: 2.5rem;">
+                    <option value="" disabled {% if not signup_form.year_level.value %}selected{% endif %}>Select Year Level</option>
+                    <option value="1" {% if signup_form.year_level.value == '1' %}selected{% endif %}>1st Year</option>
+                    <option value="2" {% if signup_form.year_level.value == '2' %}selected{% endif %}>2nd Year</option>
+                    <option value="3" {% if signup_form.year_level.value == '3' %}selected{% endif %}>3rd Year</option>
+                    <option value="4" {% if signup_form.year_level.value == '4' %}selected{% endif %}>4th Year</option>
+                </select>
+                {% if signup_form.errors.year_level %}
+                <p class="mt-1 text-xs text-red-400">{{ signup_form.errors.year_level|join:", " }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-200">Password</label>
+                <div class="relative">
+                    <input type="password" name="password1" required placeholder="Password" 
+                        class="mt-1 w-full rounded-lg border border-slate-600 p-2 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none {% if signup_form.errors.password1 %}border-red-500{% endif %}" />
+                    <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 toggle-password-signup cursor-pointer" aria-label="Show/Hide Password">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                {% if signup_form.errors.password1 %}
+                <p class="mt-1 text-xs text-red-400">{{ signup_form.errors.password1|join:", " }}</p>
+                {% endif %}
+            </div>
+
+            <div class="relative">
+                <label class="block text-sm font-medium text-gray-200">Confirm Password</label>
+                <input type="password" name="password2" required placeholder="Confirm Password" 
+                    class="mt-1 w-full rounded-lg border border-slate-600 p-2 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none {% if signup_form.errors.password2 %}border-red-500{% endif %}" />
+                {% if signup_form.errors.password2 %}
+                <p class="mt-1 text-xs text-red-400">{{ signup_form.errors.password2|join:", " }}</p>
+                {% endif %}
+            </div>
+
+            {% if messages %}
+            <div class="mt-4">
+                {% for message in messages %}
+                <div class="{% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %} p-3 rounded-md mb-2">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <button type="submit" class="w-full rounded-lg p-2 text-white btn-glow">Create account</button>
+
+            <p class="text-center text-xs text-gray-300">
+                Already have an account?
+                <a id="goLogin" href="{% url 'default_view' %}" class="font-semibold text-white hover:underline">Login</a>
+            </p>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get form elements
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const loginTab = document.getElementById('loginTab');
+    const signupTab = document.getElementById('signupTab');
+    const goSignup = document.getElementById('goSignup');
+    const goLogin = document.getElementById('goLogin');
+
+    // Define validation rules
+    const validationRules = {
+        username: {
+            required: true,
+            minLength: 3,
+            pattern: /^[\w.@+-]+$/,
+            messages: {
+                required: 'Username is required',
+                minLength: 'Username must be at least 3 characters',
+                pattern: 'Username can only contain letters, numbers, and @/./+/-/_'
+            }
+        },
+        email: {
+            required: true,
+            pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            messages: {
+                required: 'Email is required',
+                pattern: 'Please enter a valid email address'
+            }
+        },
+        password: {
+            required: true,
+            minLength: 8,
+            messages: {
+                required: 'Password is required',
+                minLength: 'Password must be at least 8 characters'
+            }
+        },
+        password1: {
+            required: true,
+            minLength: 8,
+            messages: {
+                required: 'Password is required',
+                minLength: 'Password must be at least 8 characters'
+            }
+        },
+        password2: {
+            required: true,
+            messages: {
+                required: 'Password confirmation is required'
+            }
+        },
+        student_id: {
+            required: true,
+            messages: {
+                required: 'Student ID is required'
+            }
+        },
+        department: {
+            required: true,
+            messages: {
+                required: 'Please select your department'
+            }
+        },
+        year_level: {
+            required: true,
+            messages: {
+                required: 'Please select your year level'
+            }
+        }
+    };
+
+    // Validate a single field
+    function validateField(field, rules) {
+        const value = field.value.trim();
+        const fieldRules = rules[field.name];
+        if (!fieldRules) return true;
+
+        // Required check
+        if (fieldRules.required && !value) {
+            return fieldRules.messages.required;
+        }
+
+        // Min length check
+        if (fieldRules.minLength && value.length < fieldRules.minLength) {
+            return fieldRules.messages.minLength;
+        }
+
+        // Pattern check
+        if (fieldRules.pattern && !fieldRules.pattern.test(value)) {
+            return fieldRules.messages.pattern;
+        }
+
+        return true;
+    }
+
+    // Show field error
+    function showFieldError(field, message) {
+        removeFieldError(field);
+        field.classList.add('border-red-500');
+        
+        const errorDiv = document.createElement('p');
+        errorDiv.className = 'error-message mt-1 text-xs text-red-400';
+        errorDiv.textContent = message;
+        field.parentNode.appendChild(errorDiv);
+    }
+
+    // Remove field error
+    function removeFieldError(field) {
+        field.classList.remove('border-red-500');
+        const existingError = field.parentNode.querySelector('.error-message');
+        if (existingError) {
+            existingError.remove();
+        }
+    }
+
+    // Show message function
+    function showMessage(form, message, type) {
+        let messageContainer = form.querySelector('.form-messages');
+        if (!messageContainer) {
+            messageContainer = document.createElement('div');
+            messageContainer.className = 'form-messages space-y-2 mb-4';
+            form.insertBefore(messageContainer, form.firstChild);
+        }
+
+        const messageEl = document.createElement('div');
+        messageEl.className = `p-4 rounded-lg border shadow-lg ${type === 'error' ? 'bg-red-900/80 border-red-800 text-red-100' : 'bg-green-900/80 border-green-800 text-green-100'}`;
+        messageEl.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas ${type === 'error' ? 'fa-exclamation-circle text-red-400' : 'fa-check-circle text-green-400'}"></i>
+                    <span class="font-medium">${message}</span>
+                </div>
+                <button class="p-1 hover:bg-white/10 rounded-lg transition-colors" onclick="this.closest('.p-4').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        messageContainer.appendChild(messageEl);
+
+        // Auto-hide success messages after 5 seconds
+        if (type !== 'error') {
+            setTimeout(() => {
+                messageEl.style.opacity = '0';
+                setTimeout(() => messageEl.remove(), 300);
+            }, 5000);
+        }
+    }
+
+    // Handle form submission
+    function handleSubmit(e, isLogin) {
+        e.preventDefault();
+        const form = e.target;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        let hasErrors = false;
+
+        // Clear previous errors
+        form.querySelectorAll('.error-message').forEach(el => el.remove());
+        form.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+
+        // Validate all fields
+        form.querySelectorAll('input, select').forEach(field => {
+            if (field.type !== 'hidden') {
+                const error = validateField(field, validationRules);
+                if (error !== true) {
+                    showFieldError(field, error);
+                    hasErrors = true;
+                }
+            }
+        });
+
+        // Additional validation for signup
+        if (!isLogin) {
+            const password1 = form.querySelector('input[name="password1"]');
+            const password2 = form.querySelector('input[name="password2"]');
+            
+            if (password1 && password2 && password1.value !== password2.value) {
+                showFieldError(password2, 'Passwords do not match');
+                hasErrors = true;
+            }
+        }
+
+        if (hasErrors) return;
+
+        // Disable submit button and show loading state
+        submitBtn.disabled = true;
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${isLogin ? 'Logging in' : 'Creating account'}...`;
+
+        // Safety timeout: Ensure button is re-enabled after 30 seconds max
+        let timeoutId = setTimeout(() => {
+            console.warn('Request timeout - resetting button');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            submitBtn.style.opacity = '1';
+            submitBtn.style.pointerEvents = 'auto';
+            showMessage(form, 'Request took too long. Please try again.', 'error');
+        }, 30000);
+
+        // Prepare form data
+        const formData = new FormData(form);
+        
+        // Debug: Log what we're sending
+        console.log('Form submission:', {
+            action: isLogin ? 'login' : 'signup',
+            url: isLogin ? '{% url "login" %}' : '{% url "signup" %}',
+            data: Object.fromEntries(formData)
+        });
+        
+        // Send AJAX request
+        fetch(isLogin ? '{% url "login" %}' : '{% url "signup" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Expected JSON but got:', contentType);
+                return response.text().then(text => {
+                    console.error('Response body:', text);
+                    throw new Error('Server returned ' + (contentType || 'unknown') + ' instead of JSON');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Clear safety timeout
+            clearTimeout(timeoutId);
+            
+            console.log('Response data:', data);
+            if (data.status === 'success') {
+                // Show success message
+                submitBtn.innerHTML = '<i class="fas fa-check"></i> Success!';
+                submitBtn.classList.add('bg-green-600');
+                showMessage(form, data.message, 'success');
+                
+                // Redirect after delay
+                setTimeout(() => {
+                    window.location.href = data.redirect_url;
+                }, 1500);
+            } else {
+                // IMMEDIATELY reset button and remove loading state
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                submitBtn.classList.remove('bg-green-600');
+                submitBtn.removeAttribute('disabled');
+                
+                // Ensure visibility on mobile
+                submitBtn.style.opacity = '1';
+                submitBtn.style.pointerEvents = 'auto';
+                
+                console.log('Button reset - error response:', {disabled: submitBtn.disabled, opacity: submitBtn.style.opacity});
+                
+                // Handle field-specific errors
+                if (data.errors) {
+                    Object.entries(data.errors).forEach(([field, errors]) => {
+                        if (field === 'non_field_errors') {
+                            // Show non-field errors at the top with immediate visibility
+                            showMessage(form, Array.isArray(errors) ? errors[0] : errors, 'error');
+                        } else {
+                            const input = form.querySelector(`[name="${field}"]`);
+                            if (input) {
+                                showFieldError(input, Array.isArray(errors) ? errors[0] : errors);
+                            }
+                        }
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            // Clear safety timeout
+            clearTimeout(timeoutId);
+            
+            // IMMEDIATELY reset button and remove loading state
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            submitBtn.classList.remove('bg-green-600');
+            submitBtn.removeAttribute('disabled');
+            
+            // Ensure visibility on mobile
+            submitBtn.style.opacity = '1';
+            submitBtn.style.pointerEvents = 'auto';
+            
+            console.log('Button reset - network error:', {disabled: submitBtn.disabled, opacity: submitBtn.style.opacity});
+            
+            // Log error for debugging
+            console.error('Fetch error:', error);
+            
+            // Show error message
+            showMessage(form, 'Network error: ' + error.message, 'error');
+        });
+    }
+
+    // Form tab switching
+    function showLogin() {
+        loginForm.classList.remove('hidden');
+        signupForm.classList.add('hidden');
+        loginTab.classList.add('toggle-active');
+        signupTab.classList.remove('toggle-active');
+    }
+
+    function showSignup() {
+        signupForm.classList.remove('hidden');
+        loginForm.classList.add('hidden');
+        signupTab.classList.add('toggle-active');
+        loginTab.classList.remove('toggle-active');
+    }
+
+    // Initialize form visibility based on server state
+    if ({% if show_login %}true{% else %}false{% endif %}) {
+        showLogin();
+    } else if ({% if show_signup %}true{% else %}false{% endif %}) {
+        showSignup();
+    }
+
+    // Tab click handlers
+    if (loginTab) loginTab.addEventListener('click', showLogin);
+    if (signupTab) signupTab.addEventListener('click', showSignup);
+    if (goSignup) goSignup.addEventListener('click', (e) => {
+        e.preventDefault();
+        showSignup();
+    });
+    if (goLogin) goLogin.addEventListener('click', (e) => {
+        e.preventDefault();
+        showLogin();
+    });
+
+    // Password visibility toggle
+    const toggleBtns = document.querySelectorAll('.toggle-password-login, .toggle-password-signup');
+    toggleBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const input = this.parentElement.querySelector('input');
+            const icon = this.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+    });
+
+    // Add submit handlers
+    if (loginForm) {
+        loginForm.addEventListener('submit', e => handleSubmit(e, true));
+    }
+    if (signupForm) {
+        signupForm.addEventListener('submit', e => handleSubmit(e, false));
+    }
+
+    // Add input validation on blur
+    document.querySelectorAll('input, select').forEach(field => {
+        field.addEventListener('blur', () => {
+            if (field.type !== 'hidden') {
+                const error = validateField(field, validationRules);
+                if (error !== true) {
+                    showFieldError(field, error);
+                } else {
+                    removeFieldError(field);
+                }
+            }
+        });
+    });
+
+    // Auto-hide Django messages
+    const messages = document.querySelectorAll('.message-item');
+    messages.forEach(message => {
+        if (!message.classList.contains('bg-red-900/80')) {
+            setTimeout(() => {
+                message.style.opacity = '0';
+                setTimeout(() => message.remove(), 300);
+            }, 5000);
+        }
+    });
+});
+</script>
+

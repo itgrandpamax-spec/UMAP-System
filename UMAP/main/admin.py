@@ -1,0 +1,77 @@
+from django.contrib import admin
+from .models import User, Admin, Profile, Floor, Room, RoomProfile, Schedule, Feedback, UserActivity
+
+
+# ---- USER ADMIN ----
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
+    list_display = ('id', 'username', 'email', 'type', 'is_active', 'is_staff', 'status')
+    list_filter = ('type', 'status', 'is_staff', 'is_superuser')
+    search_fields = ('username', 'email')
+    ordering = ('id',)
+
+
+# ---- ADMIN PROFILE ADMIN ----
+@admin.register(Admin)
+class AdminProfileAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'edit_history')
+    search_fields = ('user__username',)
+    ordering = ('id',)
+
+
+# ---- PROFILE ADMIN ----
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'email', 'department', 'year_level')
+    search_fields = ('user__username', 'email', 'department')
+    ordering = ('id',)
+
+
+# ---- FLOOR ADMIN ----
+@admin.register(Floor)
+class FloorAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'building', 'creation_date', 'has_csv')
+    search_fields = ('name', 'building')
+    list_filter = ('building',)
+    ordering = ('creation_date',)
+    fields = ('name', 'building', 'model_file', 'csv_file', 'creation_date')
+    readonly_fields = ('creation_date',)
+    
+    def has_csv(self, obj):
+        return 'Yes' if obj.csv_file else 'No'
+    has_csv.short_description = 'Has CSV'
+
+
+# ---- ROOM ADMIN ----
+@admin.register(Room)
+class RoomAdmin(admin.ModelAdmin):
+    list_display = ('id', 'floor', 'creation_date')
+    list_filter = ('floor__building',)
+    search_fields = ('floor__name',)
+    ordering = ('id',)
+
+
+# ---- ROOM PROFILE ADMIN ----
+@admin.register(RoomProfile)
+class RoomProfileAdmin(admin.ModelAdmin):
+    list_display = ('id', 'room', 'number', 'name', 'type')
+    search_fields = ('number', 'name', 'type')
+    ordering = ('id',)
+
+
+# ---- SCHEDULE ADMIN ----
+@admin.register(Schedule)
+class ScheduleAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'room', 'course_code', 'subject', 'day', 'start', 'end')
+    list_filter = ('day', 'course_code', 'subject')
+    search_fields = ('course_code', 'subject', 'user__username')
+    ordering = ('day', 'start')
+
+
+# ---- FEEDBACK ADMIN ----
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'room', 'rating', 'creation_date')
+    list_filter = ('rating', 'creation_date')
+    search_fields = ('user__username', 'room__id', 'comment')
+    ordering = ('-creation_date',)

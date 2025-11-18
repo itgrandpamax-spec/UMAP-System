@@ -1,0 +1,357 @@
+{% extends 'UMAP_App/Admin/Admin_Sidebar.html' %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-900 text-white p-4 md:p-8">
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold mb-2">📊 Admin Statistics Dashboard</h1>
+      <p class="text-gray-400">Real-time insights and analytics for system management</p>
+    </div>
+
+    <!-- System Health Panel -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-4 flex items-center"><i class="fas fa-heartbeat mr-2 text-red-500"></i>System Health</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="bg-blue-900/50 backdrop-blur-sm rounded-lg p-4 border border-blue-700/30">
+          <div class="text-blue-300 text-sm font-medium">Total Users</div>
+          <div class="text-3xl font-bold mt-2">{{ total_users }}</div>
+        </div>
+        <div class="bg-green-900/50 backdrop-blur-sm rounded-lg p-4 border border-green-700/30">
+          <div class="text-green-300 text-sm font-medium">Total Rooms</div>
+          <div class="text-3xl font-bold mt-2">{{ total_rooms }}</div>
+        </div>
+        <div class="bg-purple-900/50 backdrop-blur-sm rounded-lg p-4 border border-purple-700/30">
+          <div class="text-purple-300 text-sm font-medium">Total Floors</div>
+          <div class="text-3xl font-bold mt-2">{{ total_floors }}</div>
+        </div>
+        <div class="bg-indigo-900/50 backdrop-blur-sm rounded-lg p-4 border border-indigo-700/30">
+          <div class="text-indigo-300 text-sm font-medium">Total Schedules</div>
+          <div class="text-3xl font-bold mt-2">{{ total_schedules }}</div>
+        </div>
+        <div class="bg-yellow-900/50 backdrop-blur-sm rounded-lg p-4 border border-yellow-700/30">
+          <div class="text-yellow-300 text-sm font-medium">Total Ratings</div>
+          <div class="text-3xl font-bold mt-2">{{ total_ratings }}</div>
+        </div>
+        <div class="bg-orange-900/50 backdrop-blur-sm rounded-lg p-4 border border-orange-700/30">
+          <div class="text-orange-300 text-sm font-medium">Logins Today</div>
+          <div class="text-3xl font-bold mt-2">{{ logins_today }}</div>
+        </div>
+      </div>
+
+      <!-- Activity Stats Row -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+        <div class="bg-red-900/50 backdrop-blur-sm rounded-lg p-4 border border-red-700/30">
+          <div class="text-red-300 text-sm font-medium">⚠️ Failed Logins</div>
+          <div class="text-3xl font-bold mt-2">{{ failed_logins }}</div>
+        </div>
+        <div class="bg-emerald-900/50 backdrop-blur-sm rounded-lg p-4 border border-emerald-700/30">
+          <div class="text-emerald-300 text-sm font-medium">✨ New Users Today</div>
+          <div class="text-3xl font-bold mt-2">{{ new_users_today }}</div>
+        </div>
+        <div class="bg-cyan-900/50 backdrop-blur-sm rounded-lg p-4 border border-cyan-700/30">
+          <div class="text-cyan-300 text-sm font-medium">⭐ Ratings Today</div>
+          <div class="text-3xl font-bold mt-2">{{ ratings_today }}</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ratings Overview -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-4 flex items-center"><i class="fas fa-star mr-2 text-yellow-500"></i>Ratings Overview</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Top Rated Rooms -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700/30">
+          <h3 class="text-lg font-semibold mb-4 text-yellow-300">🏆 Top 5 Highest Rated Rooms</h3>
+          <div class="space-y-3">
+            {% for room in top_rated_rooms %}
+              <div class="flex justify-between items-center p-3 bg-gray-900/50 rounded">
+                <div>
+                  <div class="font-medium">{{ room.name }}</div>
+                  <div class="text-xs text-gray-400">{{ room.number }}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-yellow-300 font-bold">{{ room.rating }} ⭐</div>
+                  <div class="text-xs text-gray-400">({{ room.count }} ratings)</div>
+                </div>
+              </div>
+            {% empty %}
+              <p class="text-gray-400 text-sm">No ratings yet</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Most Commented Rooms -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700/30">
+          <h3 class="text-lg font-semibold mb-4 text-blue-300">💬 Rooms with Most Comments</h3>
+          <div class="space-y-3">
+            {% for room in most_commented_rooms %}
+              <div class="flex justify-between items-center p-3 bg-gray-900/50 rounded">
+                <div>
+                  <div class="font-medium">{{ room.name }}</div>
+                  <div class="text-xs text-gray-400">{{ room.number }}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-blue-300 font-bold">{{ room.comments }}</div>
+                  <div class="text-xs text-gray-400">comments</div>
+                </div>
+              </div>
+            {% empty %}
+              <p class="text-gray-400 text-sm">No comments yet</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Building Ratings -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700/30">
+          <h3 class="text-lg font-semibold mb-4 text-purple-300">🏢 Average Building Rating</h3>
+          <div class="space-y-3">
+            {% for building in building_ratings %}
+              <div class="flex justify-between items-center p-3 bg-gray-900/50 rounded">
+                <div>
+                  <div class="font-medium">{{ building.name }}</div>
+                  <div class="text-xs text-gray-400">({{ building.count }} ratings)</div>
+                </div>
+                <div class="text-purple-300 font-bold">{{ building.rating }} ⭐</div>
+              </div>
+            {% empty %}
+              <p class="text-gray-400 text-sm">No buildings rated</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- User Activity Analytics -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-4 flex items-center"><i class="fas fa-chart-bar mr-2 text-green-500"></i>User Activity Analytics</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Most Active Users -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700/30">
+          <h3 class="text-lg font-semibold mb-4 text-green-300">👥 Most Active Users (This Week)</h3>
+          <p class="text-xs text-gray-400 mb-3">Counts: logins, logouts, room views, uploads, etc.</p>
+          <div class="space-y-3">
+            {% for user in most_active_users %}
+              <div class="flex justify-between items-center p-3 bg-gray-900/50 rounded">
+                <div class="flex-1">
+                  <div class="font-medium">{{ user.first_name|default:user.username }}</div>
+                  <div class="text-xs text-gray-400">@{{ user.username }}</div>
+                </div>
+                <div class="bg-green-900/50 px-3 py-1 rounded-full text-green-300 text-sm font-bold">
+                  {{ user.activity_count }}
+                </div>
+              </div>
+            {% empty %}
+              <p class="text-gray-400 text-sm">No activities this week</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Peak Usage Hours -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700/30">
+          <h3 class="text-lg font-semibold mb-4 text-blue-300">📈 Peak Usage Hours</h3>
+          <div class="space-y-2">
+            {% for hour in peak_hours %}
+              <div class="flex items-center gap-3">
+                <div class="w-24">{{ hour.hour }}</div>
+                <div class="flex-1 bg-gray-700 rounded-full h-6 relative overflow-hidden">
+                  <div class="bg-gradient-to-r from-blue-500 to-blue-600 h-full" style="width: {{ hour.percentage }}%;"></div>
+                </div>
+                <div class="w-16 text-right">
+                  <span class="text-blue-300 font-bold">{{ hour.percentage }}%</span>
+                </div>
+              </div>
+            {% empty %}
+              <p class="text-gray-400 text-sm">No activity data</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Recent Comments -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700/30">
+          <h3 class="text-lg font-semibold mb-4 text-orange-300">💭 Recent Comments</h3>
+          <div class="space-y-3 max-h-80 overflow-y-auto">
+            {% for comment in recent_comments %}
+              <div class="p-3 bg-gray-900/50 rounded border-l-2 border-orange-500">
+                <div class="flex justify-between items-start mb-1">
+                  <div class="font-medium text-sm">{{ comment.user }}</div>
+                  <div class="text-yellow-300 text-xs">
+                    {% for i in "12345" %}
+                      {% if forloop.counter <= comment.rating %}<i class="fas fa-star"></i>{% endif %}
+                    {% endfor %}
+                  </div>
+                </div>
+                <div class="text-xs text-gray-400 mb-2">{{ comment.room }} • {{ comment.building }}</div>
+                <div class="text-xs text-gray-300 italic">{{ comment.comment|truncatewords:15 }}</div>
+                <div class="text-xs text-gray-500 mt-1">{{ comment.timestamp|timesince }} ago</div>
+              </div>
+            {% empty %}
+              <p class="text-gray-400 text-sm">No comments yet</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Room Usage Heatmap -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-4 flex items-center"><i class="fas fa-fire mr-2 text-red-500"></i>Room Usage Heatmap</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Most Viewed Rooms -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700/30">
+          <h3 class="text-lg font-semibold mb-4 text-red-300">🔥 Most Viewed Rooms</h3>
+          <div class="space-y-3">
+            {% for room in most_viewed_rooms %}
+              <div class="flex justify-between items-center p-3 bg-gray-900/50 rounded">
+                <div>
+                  <div class="font-medium">{{ room.name }}</div>
+                  <div class="text-xs text-gray-400">{{ room.number }}</div>
+                </div>
+                <div class="text-red-300 font-bold">{{ room.views }}</div>
+              </div>
+            {% empty %}
+              <p class="text-gray-400 text-sm">No views recorded</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Floor Traffic -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700/30">
+          <h3 class="text-lg font-semibold mb-4 text-orange-300">🏢 Floors with Heavy Traffic</h3>
+          <div class="space-y-3">
+            {% for floor in floor_traffic %}
+              <div class="p-3 bg-gray-900/50 rounded">
+                <div class="flex justify-between mb-1">
+                  <div>
+                    <div class="font-medium">{{ floor.name }}</div>
+                    <div class="text-xs text-gray-400">{{ floor.building }}</div>
+                  </div>
+                  <div class="text-orange-300 font-bold">{{ floor.traffic }}</div>
+                </div>
+                <div class="text-xs text-gray-400">{{ floor.rooms }} rooms</div>
+              </div>
+            {% empty %}
+              <p class="text-gray-400 text-sm">No floors registered</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Underused Rooms -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700/30">
+          <h3 class="text-lg font-semibold mb-4 text-gray-300">⚠️ Underused Rooms (No Schedules)</h3>
+          <div class="space-y-2 max-h-80 overflow-y-auto">
+            {% for room in underused_rooms %}
+              <div class="p-2 bg-gray-900/50 rounded text-sm">
+                <div class="font-medium">{{ room.name }}</div>
+                <div class="text-xs text-gray-400">{{ room.number }} • {{ room.building }}</div>
+              </div>
+            {% empty %}
+              <p class="text-gray-400 text-sm">All rooms are in use</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Schedule Insights -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-4 flex items-center"><i class="fas fa-calendar-alt mr-2 text-indigo-500"></i>Schedule Insights</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Classes per Building -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700/30">
+          <h3 class="text-lg font-semibold mb-4 text-indigo-300">📚 Classes per Building</h3>
+          <div class="space-y-3">
+            {% for item in classes_per_building %}
+              <div class="flex justify-between items-center p-3 bg-gray-900/50 rounded">
+                <div class="font-medium">{{ item.building }}</div>
+                <div class="bg-indigo-900/50 px-3 py-1 rounded-full text-indigo-300 font-bold">
+                  {{ item.count }}
+                </div>
+              </div>
+            {% empty %}
+              <p class="text-gray-400 text-sm">No schedules recorded</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Most Occupied Day -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700/30">
+          <h3 class="text-lg font-semibold mb-4 text-cyan-300">📅 Most Occupied Day</h3>
+          {% if most_occupied_day %}
+            <div class="p-4 bg-gray-900/50 rounded border-l-4 border-cyan-500">
+              <div class="text-3xl font-bold text-cyan-300 mb-2">{{ most_occupied_day.day }}</div>
+              <div class="text-lg text-gray-300">{{ most_occupied_day.count }} classes</div>
+            </div>
+          {% else %}
+            <p class="text-gray-400 text-sm">No data available</p>
+          {% endif %}
+        </div>
+
+        <!-- Most Common Time Range -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700/30">
+          <h3 class="text-lg font-semibold mb-4 text-lime-300">⏰ Most Common Class Times</h3>
+          <div class="space-y-2">
+            {% for time_range, count in common_time_ranges %}
+              <div class="flex justify-between items-center p-2 bg-gray-900/50 rounded text-sm">
+                <div class="font-medium">{{ time_range }}</div>
+                <div class="text-lime-300 font-bold">{{ count }}</div>
+              </div>
+            {% empty %}
+              <p class="text-gray-400 text-sm">No time data</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Data Completeness -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-4 flex items-center"><i class="fas fa-clipboard-check mr-2 text-blue-500"></i>Data Completeness Checks</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-yellow-900/50 backdrop-blur-sm rounded-lg p-4 border border-yellow-700/30">
+          <div class="text-yellow-300 text-sm font-medium">⚠️ Rooms Missing Coordinates</div>
+          <div class="text-3xl font-bold mt-2 text-yellow-300">{{ rooms_missing_coords }}</div>
+          <div class="text-xs text-yellow-400 mt-1">Need location data</div>
+        </div>
+        <div class="bg-orange-900/50 backdrop-blur-sm rounded-lg p-4 border border-orange-700/30">
+          <div class="text-orange-300 text-sm font-medium">⚠️ Floors Missing 3D Models</div>
+          <div class="text-3xl font-bold mt-2 text-orange-300">{{ floors_missing_models }}</div>
+          <div class="text-xs text-orange-400 mt-1">Need model files</div>
+        </div>
+        <div class="bg-red-900/50 backdrop-blur-sm rounded-lg p-4 border border-red-700/30">
+          <div class="text-red-300 text-sm font-medium">⚠️ Users Missing Profile Info</div>
+          <div class="text-3xl font-bold mt-2 text-red-300">{{ users_missing_profile }}</div>
+          <div class="text-xs text-red-400 mt-1">Incomplete profiles</div>
+        </div>
+        <div class="bg-pink-900/50 backdrop-blur-sm rounded-lg p-4 border border-pink-700/30">
+          <div class="text-pink-300 text-sm font-medium">⚠️ Rooms Missing Description</div>
+          <div class="text-3xl font-bold mt-2 text-pink-300">{{ rooms_missing_description }}</div>
+          <div class="text-xs text-pink-400 mt-1">Need descriptions</div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<style>
+  /* Smooth scrolling for overflow sections */
+  div::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  div::-webkit-scrollbar-track {
+    background: rgba(30, 41, 59, 0.5);
+    border-radius: 10px;
+  }
+  
+  div::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 10px;
+  }
+  
+  div::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
+  }
+</style>
+{% endblock %}

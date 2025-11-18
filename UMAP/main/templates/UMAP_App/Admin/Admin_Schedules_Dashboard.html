@@ -1,0 +1,175 @@
+{% extends 'UMAP_App/Admin/Admin_Sidebar.html' %}
+{% load static %}
+
+{% block content %}
+      {% if messages %}
+      <div class="mt-4">
+          {% for message in messages %}
+          <div class="{% if message.tags == 'error' %}bg-red-900/50 text-red-200{% else %}bg-green-900/50 text-green-200{% endif %} p-3 rounded-md mb-2">
+              {{ message }}
+          </div>
+          {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="mt-8 bg-slate-800/50 p-6 rounded-2xl shadow-sm backdrop-blur-sm">
+        <h3 class="text-lg font-medium mb-4 text-white">Schedules Overview</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="p-4 bg-blue-900/50 rounded-lg backdrop-blur-sm">
+            <h4 class="text-blue-300 font-medium">Total Schedules</h4>
+            <p class="text-2xl mt-2 text-white">{{ total_schedules|default:0 }}</p>
+          </div>
+          <div class="p-4 bg-purple-900/50 rounded-lg backdrop-blur-sm">
+            <h4 class="text-purple-300 font-medium">Active Users with Schedules</h4>
+            <p class="text-2xl mt-2 text-white">{{ active_users|default:0 }}</p>
+          </div>
+          <div class="p-4 bg-green-900/50 rounded-lg backdrop-blur-sm">
+            <h4 class="text-green-300 font-medium">Total Subjects</h4>
+            <p class="text-2xl mt-2 text-white">{{ total_subjects|default:0 }}</p>
+          </div>
+        </div>
+
+        <div class="w-full">
+          <table class="w-full text-left table-fixed">
+            <thead>
+              <tr class="text-sm text-gray-300 border-b border-slate-700">
+                <th class="p-3 w-1/5">User</th>
+                <th class="p-3 w-1/5">Schedules</th>
+                <th class="p-3 w-2/5">Subjects</th>
+                <th class="p-3 w-1/5">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="text-sm">
+              {% for user_schedule in user_schedules %}
+              <tr class="border-b border-slate-700/50 text-gray-300 hover:bg-slate-700/30">
+                <td class="p-3 truncate">
+                  <div class="font-medium truncate">{{ user_schedule.first_name }} {{ user_schedule.last_name }}</div>
+                  <div class="text-sm text-gray-400 truncate">@{{ user_schedule.username }}</div>
+                </td>
+                <td class="p-3">
+                  <div class="flex items-center space-x-2">
+                    <span class="px-2 py-1 rounded-full text-xs inline-block bg-blue-900/50 text-blue-300">
+                      {{ user_schedule.schedule_count }} Classes
+                    </span>
+                  </div>
+                  <div class="text-xs text-gray-400 mt-1">
+                    <i class="far fa-clock mr-1"></i>{{ user_schedule.total_hours }} hours/week
+                  </div>
+                </td>
+                <td class="p-3">
+                  <div class="flex flex-wrap gap-2">
+                    {% for subject in user_schedule.subjects %}
+                    <span class="px-2 py-1 rounded-full text-xs inline-block bg-slate-700/50 text-slate-300">
+                      {{ subject }}
+                    </span>
+                    {% endfor %}
+                  </div>
+                </td>
+                <td class="p-3 whitespace-nowrap">
+                  <div class="flex space-x-2">
+                    <a href="{% url 'view_user_schedule' user_id=user_schedule.id %}" 
+                       class="px-3 py-1.5 text-xs rounded-md bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition-colors">
+                      <i class="fas fa-calendar-alt mr-1"></i>View
+                    </a>
+                    <button onclick="exportSchedule({{ user_schedule.id }})" 
+                            class="px-3 py-1.5 text-xs rounded-md bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors">
+                      <i class="fas fa-download mr-1"></i>Export
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              {% empty %}
+              <tr class="border-b border-slate-700/50">
+                <td colspan="4" class="p-3 text-center text-gray-500">No schedules found</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          
+          <!-- Pagination -->
+          {% if user_schedules.paginator.num_pages > 1 %}
+          <div class="mt-4 flex items-center justify-between text-sm text-slate-400">
+            <div>
+              Showing page {{ user_schedules.number }} of {{ user_schedules.paginator.num_pages }}
+            </div>
+            <div class="space-x-2">
+              {% if user_schedules.has_previous %}
+              <a href="?page={{ user_schedules.previous_page_number }}" 
+                class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">
+                <i class="fas fa-chevron-left mr-1"></i>Prev
+              </a>
+              {% endif %}
+              
+              {% for i in user_schedules.paginator.page_range %}
+                {% if i == user_schedules.number %}
+                  <span class="px-3 py-1 border border-blue-500 bg-blue-600/50 text-white rounded-md">{{ i }}</span>
+                {% else %}
+                  <a href="?page={{ i }}" 
+                    class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">
+                    {{ i }}
+                  </a>
+                {% endif %}
+              {% endfor %}
+
+              {% if user_schedules.has_next %}
+              <a href="?page={{ user_schedules.next_page_number }}" 
+                class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">
+                Next<i class="fas fa-chevron-right ml-1"></i>
+              </a>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <script>
+        function exportSchedule(userId) {
+          // Get user name for filename
+          const row = document.querySelector(`a[href*="user/${userId}/"]`).closest('tr');
+          const userName = row.querySelector('td:first-child .font-medium').textContent.trim();
+          
+          // Create a simple CSV export
+          const schedules = window.scheduleData || [];
+          const userSchedules = schedules.filter(s => s.user_id === userId);
+          
+          if (userSchedules.length === 0) {
+            alert('No schedules found for this user');
+            return;
+          }
+
+          // Sort by day and time
+          const dayOrder = { Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4, Saturday: 5, Sunday: 6 };
+          userSchedules.sort((a, b) => {
+            const dayDiff = (dayOrder[a.day] || 7) - (dayOrder[b.day] || 7);
+            if (dayDiff !== 0) return dayDiff;
+            return (a.start_time || '').localeCompare(b.start_time || '');
+          });
+
+          // Create CSV content
+          let csv = 'Course Code,Subject,Day,Start Time,End Time,Room\n';
+          userSchedules.forEach(s => {
+            const row = [
+              `"${(s.course_code || '').replace(/"/g, '""')}"`,
+              `"${(s.subject || '').replace(/"/g, '""')}"`,
+              s.day,
+              s.start_time || '',
+              s.end_time || '',
+              `"${(s.room || 'TBA').replace(/"/g, '""')}"`
+            ].join(',');
+            csv += row + '\n';
+          });
+
+          // Download CSV
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${userName.replace(/\s+/g, '_')}_schedule.csv`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }
+      </script>
+{% endblock %}

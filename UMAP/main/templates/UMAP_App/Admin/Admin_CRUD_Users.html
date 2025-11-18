@@ -1,0 +1,129 @@
+{% extends 'UMAP_App/Admin/Admin_Sidebar.html' %}
+{% load static %}
+
+{% block content %}
+      {% if messages %}
+      <div class="mt-4">
+          {% for message in messages %}
+          <div class="{% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %} p-3 rounded-md mb-2">
+              {{ message }}
+          </div>
+          {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="mt-8 bg-slate-800/50 p-6 rounded-2xl shadow-sm backdrop-blur-sm">
+        <h3 class="text-lg font-medium mb-4 text-white">Add / Edit User</h3>
+        <form method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {% csrf_token %}
+          <input type="hidden" name="user_id" value="{{ user_form.instance.id|default:'' }}">
+          <div>
+            <label class="text-sm text-gray-300">Username</label>
+            {{ user_form.username }}
+            {% if user_form.username.errors %}
+            <p class="text-red-300 text-xs mt-1">{{ user_form.username.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Email</label>
+            {{ user_form.email }}
+            {% if user_form.email.errors %}
+            <p class="text-red-500 text-xs mt-1">{{ user_form.email.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">First Name</label>
+            {{ user_form.first_name }}
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Last Name</label>
+            {{ user_form.last_name }}
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">User Type</label>
+            {{ user_form.type }}
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Status</label>
+            <div class="mt-2">
+              {{ user_form.is_active }}
+              <span class="ml-2">Active</span>
+            </div>
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Department</label>
+            {{ profile_form.department }}
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Year Level</label>
+            {{ profile_form.year_level }}
+          </div>
+          <div class="col-span-full">
+            <label class="text-sm text-gray-600">Description</label>
+            {{ profile_form.description }}
+          </div>
+          <div class="col-span-full">
+            <label class="text-sm text-gray-600">Profile Picture</label>
+            {% if profile_form.instance.profile_pic %}
+            <div class="mt-2 mb-2">
+              <img src="{{ profile_form.instance.profile_pic.url }}" alt="Current profile picture" class="w-20 h-20 object-cover rounded">
+            </div>
+            {% endif %}
+            {{ profile_form.profile_pic }}
+          </div>
+          <div class="col-span-full flex gap-3 mt-2">
+            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
+            <button type="reset" class="px-4 py-2 border rounded-md hover:bg-gray-50">Reset</button>
+            {% if user_form.instance.id %}
+            <button type="button" 
+                    onclick="deleteItem('user', {{ user_form.instance.id }})" 
+                    class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 ml-auto">
+              Delete
+            </button>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+
+      <script>
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        async function deleteItem(modelName, itemId) {
+            if (!confirm('Are you sure you want to delete this item?')) return;
+            
+            try {
+                const response = await fetch(`/api/delete/${modelName}/${itemId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const data = await response.json();
+                    alert(data.message || 'Error deleting item');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting item');
+            }
+        }
+      </script>
+{% endblock %}
+    

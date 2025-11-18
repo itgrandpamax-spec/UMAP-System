@@ -1,0 +1,186 @@
+{% extends 'UMAP_App/Admin/Admin_Sidebar.html' %}
+{% load static %}
+
+{% block content %}
+
+      {% if messages %}
+      <div class="mt-4">
+          {% for message in messages %}
+          <div class="{% if message.tags == 'error' %}bg-red-900/50 text-red-200{% else %}bg-green-900/50 text-green-200{% endif %} p-3 rounded-md mb-2">
+              {{ message }}
+          </div>
+          {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="mt-8 bg-slate-800/50 p-6 rounded-2xl shadow-sm backdrop-blur-sm">
+        <h3 class="text-lg font-medium mb-4 text-white">Dashboard Overview</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="p-4 bg-indigo-900/50 rounded-lg backdrop-blur-sm">
+            <h4 class="text-indigo-300 font-medium">Total Users</h4>
+            <p class="text-2xl mt-2 text-white">{{ total_users|default:0 }}</p>
+          </div>
+          <div class="p-4 bg-green-900/50 rounded-lg backdrop-blur-sm">
+            <h4 class="text-green-300 font-medium">Active Rooms</h4>
+            <p class="text-2xl mt-2 text-white">{{ total_rooms|default:0 }}</p>
+          </div>
+          <div class="p-4 bg-purple-900/50 rounded-lg backdrop-blur-sm">
+            <h4 class="text-purple-300 font-medium">Total Floors</h4>
+            <p class="text-2xl mt-2 text-white">{{ total_floors|default:0 }}</p>
+          </div>
+        </div>
+
+        <div class="w-full">
+          <table class="w-full text-left table-fixed">
+            <thead>
+              <tr class="text-sm text-gray-300 border-b border-slate-700">
+                <th class="p-3 w-1/5">User</th>
+                <th class="p-3 w-1/5">Activity</th>
+                <th class="p-3 w-2/5">Details</th>
+                <th class="p-3 w-1/5">Time</th>
+              </tr>
+            </thead>
+            <tbody class="text-sm">
+              {% for entry in recent_activities %}
+              <tr class="border-b border-slate-700/50 text-gray-300 hover:bg-slate-700/30">
+                <td class="p-3 truncate">
+                  <div class="font-medium truncate">{{ entry.user.display_name }}</div>
+                  <div class="text-sm text-gray-400 truncate">@{{ entry.user.username }}</div>
+                </td>
+                <td class="p-3">
+                  {% if entry.type == 'activity' %}
+                    {% with activity_type=entry.item.get_activity_type_display %}
+                    <span class="px-2 py-1 rounded-full text-xs inline-block 
+                      {% if 'Login' in activity_type %}bg-green-900/50 text-green-300
+                      {% elif 'Logout' in activity_type %}bg-red-900/50 text-red-300
+                      {% elif 'Schedule' in activity_type %}bg-blue-900/50 text-blue-300
+                      {% elif 'Room' in activity_type %}bg-purple-900/50 text-purple-300
+                      {% elif 'Floor' in activity_type %}bg-indigo-900/50 text-indigo-300
+                      {% elif 'User' in activity_type %}bg-yellow-900/50 text-yellow-300
+                      {% else %}bg-gray-900/50 text-gray-300{% endif %}">
+                      {{ activity_type }}
+                    </span>
+                    {% endwith %}
+                  {% elif entry.type == 'feedback' %}
+                    <span class="px-2 py-1 rounded-full text-xs inline-block bg-orange-900/50 text-orange-300">
+                      Rated Room
+                    </span>
+                  {% endif %}
+                </td>
+                <td class="p-3">
+                  {% if entry.type == 'activity' %}
+                    {% if entry.item.details %}
+                      <div class="space-y-1 break-words">
+                      {% for key, value in entry.item.details.items %}
+                        <div class="truncate">
+                          <span class="text-gray-400 font-medium">{{ key|title }}:</span> 
+                          <span class="text-gray-300">{{ value }}</span>
+                        </div>
+                      {% endfor %}
+                      </div>
+                    {% endif %}
+                  {% elif entry.type == 'feedback' %}
+                    <div class="space-y-1 break-words">
+                      <div class="truncate">
+                        <span class="text-gray-400 font-medium">Room:</span> 
+                        <span class="text-gray-300">{{ entry.item.room.profile.name }}</span>
+                      </div>
+                      <div class="truncate">
+                        <span class="text-gray-400 font-medium">Rating:</span> 
+                        <span class="text-yellow-300">
+                          {% for star in "12345" %}
+                            {% if forloop.counter <= entry.item.rating %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{% endif %}
+                          {% endfor %}
+                        </span>
+                      </div>
+                      {% if entry.item.comment %}
+                      <div class="truncate">
+                        <span class="text-gray-400 font-medium">Comment:</span> 
+                        <span class="text-gray-300">{{ entry.item.comment }}</span>
+                      </div>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                </td>
+                <td class="p-3 whitespace-nowrap text-gray-400">
+                  <div title="{% if entry.type == 'activity' %}{{ entry.item.timestamp|date:'Y-m-d H:i:s' }}{% else %}{{ entry.item.creation_date|date:'Y-m-d H:i:s' }}{% endif %}">
+                    {% if entry.type == 'activity' %}
+                      {{ entry.item.timestamp|timesince }} ago
+                    {% else %}
+                      {{ entry.item.creation_date|timesince }} ago
+                    {% endif %}
+                  </div>
+                  {% if entry.type == 'activity' and entry.item.ip_address %}
+                    <div class="text-xs text-gray-500">{{ entry.item.ip_address }}</div>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr class="border-b border-slate-700/50">
+                <td colspan="4" class="p-3 text-center text-gray-500">No recent activities</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          
+          <!-- Pagination -->
+          {% if recent_activities.paginator.num_pages > 1 %}
+          <div class="mt-4 flex items-center justify-between text-sm text-slate-400">
+            <div>
+              Showing page {{ recent_activities.number }} of {{ recent_activities.paginator.num_pages }}
+            </div>
+            <div class="space-x-2">
+              {% if recent_activities.has_previous %}
+              <a href="?page={{ recent_activities.previous_page_number }}" 
+                class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">
+                <i class="fas fa-chevron-left mr-1"></i>Prev
+              </a>
+              {% endif %}
+              
+              {% with current_page=recent_activities.number total_pages=recent_activities.paginator.num_pages %}
+                {% if total_pages > 1 %}
+                  <!-- Show first page if not visible -->
+                  {% if current_page > 3 %}
+                    <a href="?page=1" 
+                      class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">1</a>
+                    {% if current_page > 4 %}
+                      <span class="px-2 py-1">...</span>
+                    {% endif %}
+                  {% endif %}
+
+                  <!-- Show pages around current page -->
+                  {% for i in recent_activities.paginator.page_range %}
+                    {% if i >= current_page|add:'-2' and i <= current_page|add:'2' %}
+                      {% if i == current_page %}
+                        <span class="px-3 py-1 border border-blue-500 bg-blue-600/50 text-white rounded-md">{{ i }}</span>
+                      {% else %}
+                        <a href="?page={{ i }}" 
+                          class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">{{ i }}</a>
+                      {% endif %}
+                    {% endif %}
+                  {% endfor %}
+
+                  <!-- Show last page if not visible -->
+                  {% if current_page < total_pages|add:'-2' %}
+                    {% if current_page < total_pages|add:'-3' %}
+                      <span class="px-2 py-1">...</span>
+                    {% endif %}
+                    <a href="?page={{ total_pages }}" 
+                      class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">{{ total_pages }}</a>
+                  {% endif %}
+                {% endif %}
+              {% endwith %}
+
+              {% if recent_activities.has_next %}
+              <a href="?page={{ recent_activities.next_page_number }}" 
+                class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">
+                Next<i class="fas fa-chevron-right ml-1"></i>
+              </a>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+  {% endblock %}
