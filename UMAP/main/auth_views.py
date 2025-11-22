@@ -56,32 +56,23 @@ def login_ajax(request):
                 }
             })
 
-        # Try to authenticate with username
-        user = authenticate(request, username=username, password=password)
-        
-        # If that fails, try with email
-        if user is None:
-            try:
-                user_obj = User.objects.get(email=username)
-                user = authenticate(request, username=user_obj.username, password=password)
-            except User.DoesNotExist:
-                user = None
-        
-        # Check if user exists to give appropriate error message
-        if user is None:
-            # First check if user exists but is inactive
-            try:
-                inactive_user = User.objects.get(username=username)
-                if not inactive_user.is_active:
-                    return JsonResponse({
-                        'status': 'error',
-                        'errors': {
-                            'non_field_errors': ['Your account has been deactivated. Please contact our administrator for assistance.']
-                        }
-                    })
-            except User.DoesNotExist:
+        try:
+            # Try to authenticate with username
+            user = authenticate(request, username=username, password=password)
+            
+            # If that fails, try with email
+            if user is None:
                 try:
-                    inactive_user = User.objects.get(email=username)
+                    user_obj = User.objects.get(email=username)
+                    user = authenticate(request, username=user_obj.username, password=password)
+                except User.DoesNotExist:
+                    user = None
+            
+            # Check if user exists to give appropriate error message
+            if user is None:
+                # First check if user exists but is inactive
+                try:
+                    inactive_user = User.objects.get(username=username)
                     if not inactive_user.is_active:
                         return JsonResponse({
                             'status': 'error',
@@ -90,74 +81,96 @@ def login_ajax(request):
                             }
                         })
                 except User.DoesNotExist:
-                    pass
-            
-            user_exists = User.objects.filter(username=username).exists() or \
-                        User.objects.filter(email=username).exists()
-            
-            if user_exists:
+                    try:
+                        inactive_user = User.objects.get(email=username)
+                        if not inactive_user.is_active:
+                            return JsonResponse({
+                                'status': 'error',
+                                'errors': {
+                                    'non_field_errors': ['Your account has been deactivated. Please contact our administrator for assistance.']
+                                }
+                            })
+                    except User.DoesNotExist:
+                        pass
+                
+                user_exists = User.objects.filter(username=username).exists() or \
+                            User.objects.filter(email=username).exists()
+                
+                if user_exists:
+                    return JsonResponse({
+                        'status': 'error',
+                        'errors': {
+                            'non_field_errors': ['Invalid password. Please try again.']
+                        }
+                    })
+                else:
+                    return JsonResponse({
+                        'status': 'error',
+                        'errors': {
+                            'non_field_errors': ['This account does not exist. Please check your username/email or sign up.']
+                        }
+                    })
+
+            # Check if user is active
+            if not user.is_active:
                 return JsonResponse({
                     'status': 'error',
                     'errors': {
-                        'non_field_errors': ['Invalid password. Please try again.']
-                    }
-                })
-            else:
-                return JsonResponse({
-                    'status': 'error',
-                    'errors': {
-                        'non_field_errors': ['This account does not exist. Please check your username/email or sign up.']
+                        'non_field_errors': ['Your account has been deactivated. Please contact our administrator for assistance.']
                     }
                 })
 
-        # Check if user is active
-        if not user.is_active:
+            # Invalidate all previous sessions for this user
+            from .models import UserSession
+            UserSession.objects.filter(user=user, is_active=True).update(is_active=False)
+
+            # Login successful
+            auth_login(request, user)
+            
+            # Create a new UserSession record
+            user_agent = request.META.get('HTTP_USER_AGENT', '')
+            device_info = UserSession.get_user_agent_info(user_agent)
+            ip_address = get_client_ip(request)
+            
+            UserSession.objects.create(
+                user=user,
+                session_key=request.session.session_key,
+                device_info=device_info,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                is_active=True
+            )
+            
+            track_activity(user, UserActivity.ActivityType.LOGIN, request=request)
+
+            # Determine redirect URL
+            redirect_url = '/admin_main/' if user.is_staff or user.is_superuser else '/'
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': f"Welcome back, {user.first_name if user.first_name else username}!",
+                'redirect_url': redirect_url
+            })
+        
+        except User.DoesNotExist as e:
+            import traceback
+            print(f"User lookup error: {str(e)}")
+            print(traceback.format_exc())
             return JsonResponse({
                 'status': 'error',
-                'errors': {
-                    'non_field_errors': ['Your account has been deactivated. Please contact our administrator for assistance.']
-                }
-            })
-
-        # Invalidate all previous sessions for this user
-        from .models import UserSession
-        UserSession.objects.filter(user=user, is_active=True).update(is_active=False)
-
-        # Login successful
-        auth_login(request, user)
-        
-        # Create a new UserSession record
-        user_agent = request.META.get('HTTP_USER_AGENT', '')
-        device_info = UserSession.get_user_agent_info(user_agent)
-        ip_address = get_client_ip(request)
-        
-        UserSession.objects.create(
-            user=user,
-            session_key=request.session.session_key,
-            device_info=device_info,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            is_active=True
-        )
-        
-        track_activity(user, UserActivity.ActivityType.LOGIN, request=request)
-
-        # Determine redirect URL
-        redirect_url = '/admin_main/' if user.is_staff or user.is_superuser else '/'
-        
-        return JsonResponse({
-            'status': 'success',
-            'message': f"Welcome back, {user.first_name if user.first_name else username}!",
-            'redirect_url': redirect_url
-        })
+                'errors': {'non_field_errors': ['An error occurred during login. Please try again.']}
+            }, status=500)
 
     except Exception as e:
+        import traceback
+        print(f"Login AJAX error: {str(e)}")
+        print(traceback.format_exc())
         return JsonResponse({
             'status': 'error',
             'errors': {
-                'non_field_errors': ['An error occurred during login']
+                'non_field_errors': [f'An error occurred during login: {str(e)}']
             }
-        })
+        }, status=500)
 
 def signup_ajax(request):
     """Handle AJAX signup requests"""

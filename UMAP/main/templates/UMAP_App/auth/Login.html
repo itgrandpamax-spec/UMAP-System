@@ -692,9 +692,21 @@ document.addEventListener('DOMContentLoaded', function() {
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 console.error('Expected JSON but got:', contentType);
+                console.error('Response status:', response.status);
+                
+                // If server error (5xx), return a meaningful error
+                if (response.status >= 500) {
+                    return Promise.resolve({
+                        status: 'error',
+                        errors: {
+                            'non_field_errors': ['Server error. Please try again later.']
+                        }
+                    });
+                }
+                
                 return response.text().then(text => {
-                    console.error('Response body:', text);
-                    throw new Error('Server returned ' + (contentType || 'unknown') + ' instead of JSON');
+                    console.error('Response body:', text.substring(0, 500));
+                    throw new Error('Server returned ' + (contentType || 'HTML') + ' instead of JSON');
                 });
             }
             return response.json();
