@@ -4,8 +4,10 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Copy requirements
+# Copy requirements first
 COPY requirements.txt .
+
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
@@ -14,8 +16,8 @@ COPY . .
 # Collect static files
 RUN python UMAP/manage.py collectstatic --noinput
 
-# Expose port
+# Expose port 8000
 EXPOSE 8000
 
-# Start server
-CMD ["gunicorn", "UMAP.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Start server (Option A: use --chdir)
+CMD ["gunicorn", "UMAP.wsgi:application", "--chdir", "UMAP", "--bind", "0.0.0.0:8000"]
