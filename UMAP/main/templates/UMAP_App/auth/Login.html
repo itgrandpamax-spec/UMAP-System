@@ -614,6 +614,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Helper function to get CSRF token
+    function getCsrfToken() {
+        // Try to get from form input first
+        const csrfInput = document.querySelector('[name="csrfmiddlewaretoken"]');
+        if (csrfInput && csrfInput.value) {
+            return csrfInput.value;
+        }
+        
+        // Try to get from cookie
+        const name = 'csrftoken';
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
     // Handle form submission
     function handleSubmit(e, isLogin) {
         e.preventDefault();
@@ -666,11 +690,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Prepare form data
         const formData = new FormData(form);
+        const csrfToken = getCsrfToken();
         
         // Debug: Log what we're sending
         console.log('Form submission:', {
             action: isLogin ? 'login' : 'signup',
             url: isLogin ? '{% url "login" %}' : '{% url "signup" %}',
+            csrfToken: csrfToken ? '✓ Present' : '✗ Missing',
             data: Object.fromEntries(formData)
         });
         
@@ -680,7 +706,7 @@ document.addEventListener('DOMContentLoaded', function() {
             body: formData,
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                'X-CSRFToken': csrfToken
             },
             credentials: 'same-origin'
         })
@@ -693,6 +719,16 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!contentType || !contentType.includes('application/json')) {
                 console.error('Expected JSON but got:', contentType);
                 console.error('Response status:', response.status);
+                
+                // If 403 Forbidden (CSRF), return a meaningful error
+                if (response.status === 403) {
+                    return Promise.resolve({
+                        status: 'error',
+                        errors: {
+                            'non_field_errors': ['Security error: Please refresh the page and try again.']
+                        }
+                    });
+                }
                 
                 // If server error (5xx), return a meaningful error
                 if (response.status >= 500) {

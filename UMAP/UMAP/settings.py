@@ -182,5 +182,14 @@ SERVER_EMAIL = 'server@umap.edu'
 CSRF_TRUSTED_ORIGINS = [
     "https://*.ngrok-free.app",
     "https://*.ngrok-free.dev",
-    "https://*.ngrok.app"
+    "https://*.ngrok.app",
+    "https://*.railway.app",
+    "https://*.railway.internal",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000"
 ]
+
+# CSRF settings for better compatibility
+CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
+CSRF_COOKIE_HTTPONLY = False  # Must be False for JS to read the cookie
+CSRF_COOKIE_SAMESITE = 'Lax'
