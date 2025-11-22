@@ -1,0 +1,51 @@
+{
+    "name": "UMAP Navigation",
+    "short_name": "UMAP",
+    "description": "University Map Navigation System",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#0f172a",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "/static/UMAP_App/images/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/static/UMAP_App/images/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "View Map",
+            "url": "/",
+            "icons": [
+                {
+                    "src": "/static/UMAP_App/images/map-96x96.png",
+                    "sizes": "96x96"
+                }
+            ]
+        },
+        {
+            "name": "My Schedule",
+            "url": "/schedule",
+            "icons": [
+                {
+                    "src": "/static/UMAP_App/images/schedule-96x96.png",
+                    "sizes": "96x96"
+                }
+            ]
+        }
+    ],
+    "categories": ["navigation", "education", "maps"],
+    "lang": "en-US",
+    "dir": "ltr",
+    "scope": "/",
+    "prefer_related_applications": false
+}
