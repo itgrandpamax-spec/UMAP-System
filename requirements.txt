@@ -6,3 +6,5 @@ icalendar>=5.0.7
 pytz>=2023.3
 gunicorn
 whitenoise
+dj-database-url
+psycopg2-binary
