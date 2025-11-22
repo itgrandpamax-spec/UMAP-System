@@ -148,22 +148,20 @@
           </div>
         </div>
 
-        <!-- Peak Usage Hours -->
+        <!-- Most Saved Rooms -->
         <div class="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700/30">
-          <h3 class="text-lg font-semibold mb-4 text-blue-300">📈 Peak Usage Hours</h3>
-          <div class="space-y-2">
-            {% for hour in peak_hours %}
-              <div class="flex items-center gap-3">
-                <div class="w-24">{{ hour.hour }}</div>
-                <div class="flex-1 bg-gray-700 rounded-full h-6 relative overflow-hidden">
-                  <div class="bg-gradient-to-r from-blue-500 to-blue-600 h-full" style="width: {{ hour.percentage }}%;"></div>
+          <h3 class="text-lg font-semibold mb-4 text-green-300">💾 Most Saved Rooms</h3>
+          <div class="space-y-3">
+            {% for room in most_saved_rooms %}
+              <div class="p-3 bg-gray-900/50 rounded border-l-2 border-green-500">
+                <div class="flex justify-between items-start mb-1">
+                  <div class="font-medium text-sm">{{ room.name }}</div>
+                  <div class="text-green-400 text-xs font-bold">{{ room.saves }} saves</div>
                 </div>
-                <div class="w-16 text-right">
-                  <span class="text-blue-300 font-bold">{{ hour.percentage }}%</span>
-                </div>
+                <div class="text-xs text-gray-400">{{ room.building }} • Room {{ room.number }}</div>
               </div>
             {% empty %}
-              <p class="text-gray-400 text-sm">No activity data</p>
+              <p class="text-gray-400 text-sm">No saved locations yet</p>
             {% endfor %}
           </div>
         </div>

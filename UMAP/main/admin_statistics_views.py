@@ -5,7 +5,7 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import (
     User, Schedule, Feedback, Room, Floor, UserActivity, 
-    RoomProfile, Profile
+    RoomProfile, Profile, SavedLocation
 )
 
 
@@ -54,6 +54,23 @@ def admin_statistics(request):
                 'comments': room.comment_count
             }
             for room in most_commented_rooms
+        ]
+        
+        # Most saved rooms
+        most_saved_rooms = Room.objects.annotate(
+            save_count=Count('saved_by_users')
+        ).filter(
+            save_count__gt=0
+        ).order_by('-save_count')[:5]
+        
+        context['most_saved_rooms'] = [
+            {
+                'name': room.profile.name if room.profile else f'Room {room.id}',
+                'number': room.profile.number if room.profile else 'N/A',
+                'saves': room.save_count,
+                'building': room.floor.building if room.floor else 'N/A'
+            }
+            for room in most_saved_rooms
         ]
         
         # Average building rating

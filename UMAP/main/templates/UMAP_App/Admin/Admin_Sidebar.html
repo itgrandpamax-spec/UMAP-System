@@ -14,6 +14,13 @@
       transition: all 0.3s ease;
       min-width: 260px;
       background-color: rgba(30, 41, 59, 0.5);
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 40;
+      backdrop-filter: blur(10px);
     }
     .sidebar.collapsed {
       min-width: 80px;
@@ -49,6 +56,14 @@
     .nav-link.active {
       background-color: rgba(37, 99, 235, 0.2);
       border-left: 3px solid #3b82f6;
+    }
+    /* Adjust main content to accommodate fixed sidebar */
+    main {
+      margin-left: 260px;
+      transition: margin-left 0.3s ease;
+    }
+    .sidebar.collapsed ~ main {
+      margin-left: 80px;
     }
   </style>
 </head>
@@ -171,7 +186,7 @@
     {% endif %}
 
     <!-- Main Content -->
-    <main class="flex-1 p-6 transition-all duration-300">
+    <main class="flex-1 p-6 transition-all duration-300" style="margin-left: 260px;">
       {% block content %}{% endblock %}
     </main>
   </div>
@@ -180,14 +195,28 @@
   <script>
     const toggleBtn = document.getElementById('toggleSidebarBtn');
     const sidebar = document.getElementById('adminSidebar');
+    const main = document.querySelector('main');
+
+    // Function to update main margin based on sidebar state
+    function updateMainMargin() {
+      if (sidebar.classList.contains('collapsed')) {
+        main.style.marginLeft = '80px';
+      } else {
+        main.style.marginLeft = '260px';
+      }
+    }
 
     // Load state from localStorage
     if (localStorage.getItem('sidebar-collapsed') === 'true') {
       sidebar.classList.add('collapsed');
     }
+    
+    // Initial margin setup
+    updateMainMargin();
 
     toggleBtn.addEventListener('click', () => {
       sidebar.classList.toggle('collapsed');
+      updateMainMargin();
       localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
     });
   </script>

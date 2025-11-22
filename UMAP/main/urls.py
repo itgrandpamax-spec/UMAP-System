@@ -10,6 +10,8 @@ urlpatterns = [
     path('login/ajax/', auth_views.login_ajax, name='login_ajax'),
     path('signup/', auth_views.signup_view, name='signup'),
     path('signup/ajax/', auth_views.signup_ajax, name='signup_ajax'),
+    path('password-reset/', auth_views.password_reset_request, name='password_reset_request'),
+    path('password-reset/<str:uidb64>/<str:token>/', auth_views.password_reset_confirm, name='password_reset_confirm'),
     path('logout/', views.logout_view, name='logout'),
     
     # Schedule routes
@@ -29,12 +31,19 @@ urlpatterns = [
     path('api/room/<int:room_id>/photos/', views.get_room_photos, name='get_room_photos'),
     path('api/room/<int:room_id>/ratings/', views.get_room_ratings, name='get_room_ratings'),
     path('api/room/<int:room_id>/rate/', views.submit_room_rating, name='submit_room_rating'),
+    path('api/room/<int:room_id>/save/', api_views.save_location, name='save_location'),
+    path('api/room/<int:room_id>/unsave/', api_views.remove_location, name='remove_location'),
+    path('api/room/<int:room_id>/check-saved/', api_views.check_saved_location, name='check_saved_location'),
+    path('api/room/<int:room_id>/track-view/', api_views.track_room_view, name='track_room_view'),
+    path('api/user/recent/', api_views.get_user_recent, name='get_user_recent'),
     path('api/delete/roomimage/<int:image_id>/', views.delete_roomimage, name='delete_roomimage'),
     path('api/import-rooms-csv/', views.import_rooms_from_csv, name='import_rooms_csv'),
     path('api/search-rooms/', views.search_rooms_and_locations, name='search_rooms'),
 
     path('user_main/', views.user_main_view, name='user_main_view'),
     path('user_profile/', views.user_profile_view, name='user_profile'),
+    path('user_saved/', views.saved_locations_view, name='saved_locations'),
+    path('user_recent/', views.recent_locations_view, name='recent_locations'),
 
     path('admin_profile/', views.admin_profile_view, name='admin_profile_view'),
     path('admin_main/', views.admin_main_view, name='admin_main_view'),

@@ -6,11 +6,10 @@ from django.contrib.auth.models import AbstractUser
 # USER MODEL
 class User(AbstractUser):
     class UserType(models.TextChoices):
-        GUEST = 'guest', 'Guest'
         REGULAR = 'regular', 'Regular'
         ADMIN = 'admin', 'Admin'
 
-    type = models.CharField(max_length=10, choices=UserType.choices, default=UserType.GUEST)
+    type = models.CharField(max_length=10, choices=UserType.choices, default=UserType.REGULAR)
     status = models.BooleanField(default=True)
 
     def __str__(self):
@@ -148,6 +147,20 @@ class Feedback(models.Model):
     def __str__(self):
         return f"Feedback by {self.user.username} on Room {self.room.id}"
 
+# SAVED LOCATIONS MODEL
+class SavedLocation(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_locations')
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='saved_by_users')
+    saved_date = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'room')  # Prevent duplicate saves
+        ordering = ['-saved_date']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.room.profile.name if self.room.profile else 'Room'}"
+
+
 # USER ACTIVITY MODEL
 class UserActivity(models.Model):
     class ActivityType(models.TextChoices):
@@ -180,3 +193,49 @@ class UserActivity(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.get_activity_type_display()} - {self.timestamp}"
+
+
+# USER SESSION MODEL - Track active sessions per user
+class UserSession(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions')
+    session_key = models.CharField(max_length=40, unique=True)
+    device_info = models.CharField(max_length=255, blank=True)  # Browser/device info
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)  # Full user agent string
+    login_time = models.DateTimeField(auto_now_add=True)
+    last_activity = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['-login_time']
+        verbose_name_plural = 'User Sessions'
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.device_info or 'Unknown Device'} - {self.login_time}"
+    
+    @staticmethod
+    def get_user_agent_info(user_agent):
+        """Extract device info from user agent string"""
+        import re
+        # Simple device detection
+        if 'Mobile' in user_agent or 'Android' in user_agent or 'iPhone' in user_agent:
+            device = 'Mobile'
+        elif 'Tablet' in user_agent or 'iPad' in user_agent:
+            device = 'Tablet'
+        else:
+            device = 'Desktop'
+        
+        # Browser detection
+        if 'Chrome' in user_agent:
+            browser = 'Chrome'
+        elif 'Firefox' in user_agent:
+            browser = 'Firefox'
+        elif 'Safari' in user_agent:
+            browser = 'Safari'
+        elif 'Edge' in user_agent:
+            browser = 'Edge'
+        else:
+            browser = 'Unknown'
+        
+        return f"{device} - {browser}"
+

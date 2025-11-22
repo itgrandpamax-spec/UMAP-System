@@ -10,7 +10,7 @@ from .forms import (
     UserRegistrationForm, FloorForm, RoomForm, RoomProfileForm,
     AdminUserForm, AdminProfileForm
 )
-from .models import User, Floor, Room, RoomProfile, Profile, Schedule, UserActivity, RoomImage, Feedback
+from .models import User, Floor, Room, RoomProfile, Profile, Schedule, UserActivity, RoomImage, Feedback, SavedLocation
 
 def is_admin(user):
     return user.is_staff or user.is_superuser
@@ -53,10 +53,11 @@ def default_view(request):
     # Get show_login flag from session
     show_login = request.session.pop('show_login', False)
     show_signup = request.session.pop('show_signup', False)
+    logged_out_from_another_device = request.session.pop('logged_out_from_another_device', False)
     
     # Create an empty form for the template context
     context = {
-        'show_login': show_login,
+        'show_login': show_login or logged_out_from_another_device,  # Also show login if logged out from another device
         'show_signup': show_signup,
         'form': {'username': {'value': ''}, 'errors': {}}  # Empty form with required structure
     }
@@ -122,15 +123,63 @@ def signup_view(request):
 @login_required
 @user_passes_test(is_admin)
 def admin_user_list_view(request):
-    users = User.objects.all().select_related('profile').order_by('id')  # Changed to sort by id
+    from django.utils import timezone
+    from datetime import timedelta
+    from django.db.models import Q
+    
+    # Get filter parameters from query string
+    search_query = request.GET.get('search', '').strip()
+    role_filter = request.GET.get('role', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    
+    # Start with all users
+    users = User.objects.all().select_related('profile').order_by('id')
+    
+    # Apply search filter
+    if search_query:
+        users = users.filter(
+            Q(username__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query)
+        )
+    
+    # Apply role filter
+    if role_filter == 'admin':
+        users = users.filter(Q(is_superuser=True) | Q(is_staff=True))
+    elif role_filter == 'regular':
+        users = users.filter(is_superuser=False, is_staff=False)
+    
+    # Apply status filter
+    if status_filter == 'active':
+        users = users.filter(is_active=True)
+    elif status_filter == 'inactive':
+        users = users.filter(is_active=False)
+    
+    # Get total and active users for stats (before pagination)
+    total_users = User.objects.all().count()
+    active_users = User.objects.filter(is_active=True).count()
+    
+    # Calculate new users this week
+    today = timezone.now()
+    week_ago = today - timedelta(days=7)
+    new_users_count = User.objects.filter(
+        date_joined__gte=week_ago
+    ).count()
+    
+    # Paginate results
     paginator = Paginator(users, 5)  # 5 users per page
     page = request.GET.get('page', 1)
     users_page = paginator.get_page(page)
     
     return render(request, 'UMAP_App/Admin/Admin_User_List.html', {
         'users': users_page,
-        'total_users': users.count(),
-        'active_users': users.filter(is_active=True).count()
+        'total_users': total_users,
+        'active_users': active_users,
+        'new_users_count': new_users_count,
+        'search_query': search_query,
+        'role_filter': role_filter,
+        'status_filter': status_filter
     })
 
 @login_required
@@ -205,8 +254,6 @@ def admin_profile_view(request):
 
 @login_required
 @user_passes_test(is_admin)
-@login_required
-@user_passes_test(is_admin)
 def admin_floor_list_view(request):
     from django.db.models import Count
     
@@ -215,13 +262,32 @@ def admin_floor_list_view(request):
         room_count=Count('rooms')
     ).order_by('building', 'name')
     
-    buildings = floors.values_list('building', flat=True).distinct()
+    # Get unique buildings, ordered
+    buildings = list(floors.values_list('building', flat=True).distinct().order_by('building'))
+    
+    # Calculate building statistics - avoid duplicates by using a dict
+    building_stats_dict = {}
+    for building_name in buildings:
+        if building_name not in building_stats_dict:
+            building_floors = floors.filter(building=building_name)
+            floor_count = building_floors.count()
+            room_count = building_floors.aggregate(total=Count('rooms'))['total']
+            
+            building_stats_dict[building_name] = {
+                'name': building_name,
+                'floors': floor_count,
+                'rooms': room_count
+            }
+    
+    building_stats = list(building_stats_dict.values())
     
     context = {
         'floors': floors,
         'buildings': buildings,
+        'building_stats': building_stats,
         'total_floors': floors.count(),
-        'total_rooms': Room.objects.count()
+        'total_rooms': Room.objects.count(),
+        'total_buildings': len(building_stats)
     }
     return render(request, 'UMAP_App/Admin/Admin_Floor_List.html', context)
 
@@ -233,6 +299,18 @@ def admin_rooms_list_view(request):
     building = request.GET.get('building')
     search_query = request.GET.get('search', '').strip()
     selected_floor = None
+    selected_building = building  # Track the selected building
+    
+    # If a floor is selected, extract the building from it
+    if floor_id:
+        try:
+            selected_floor = Floor.objects.get(id=floor_id)
+            # If no building was explicitly selected, use the one from the floor
+            if not building:
+                building = selected_floor.building
+                selected_building = building
+        except Floor.DoesNotExist:
+            selected_floor = None
     
     # Filter by building
     if building:
@@ -241,7 +319,6 @@ def admin_rooms_list_view(request):
     # Filter by floor
     if floor_id:
         rooms = rooms.filter(floor_id=floor_id)
-        selected_floor = Floor.objects.get(id=floor_id)
     
     # Search in room name, number, and description
     if search_query:
@@ -271,7 +348,7 @@ def admin_rooms_list_view(request):
         'floors': floors_qs,
         'buildings': buildings,
         'selected_floor': selected_floor,
-        'selected_building': building,
+        'selected_building': selected_building,
         'search_query': search_query,
         'total_rooms': rooms.count()
     }
@@ -439,7 +516,7 @@ def login_view(request):
             
             if user is not None:
                 if not user.is_active:
-                    messages.error(request, "This account has been deactivated. Please contact an administrator.")
+                    messages.error(request, "Your account has been deactivated. Please contact our administrator for assistance.")
                     request.session['show_login'] = True
                     return redirect('login')
                 
@@ -489,13 +566,14 @@ def admin_main_view(request):
     total_rooms = Room.objects.count()
     total_floors = Floor.objects.count()
     
-    # Get all activities and feedback
+    # Get all activities, feedback, and saved locations
     from django.utils import timezone
     from datetime import timedelta
     activities = UserActivity.objects.select_related('user').all().order_by('-timestamp')
     feedbacks = Feedback.objects.select_related('user', 'room').all().order_by('-creation_date')
+    saved_locations = SavedLocation.objects.select_related('user', 'room').all().order_by('-saved_date')
     
-    # Combine activities and feedbacks
+    # Combine activities, feedbacks, and saved locations
     combined_items = []
     for activity in activities:
         combined_items.append({
@@ -510,6 +588,13 @@ def admin_main_view(request):
             'item': feedback,
             'timestamp': feedback.creation_date,
             'user': feedback.user
+        })
+    for saved_location in saved_locations:
+        combined_items.append({
+            'type': 'saved_location',
+            'item': saved_location,
+            'timestamp': saved_location.saved_date,
+            'user': saved_location.user
         })
     
     # Sort combined items by timestamp (most recent first)
@@ -906,6 +991,13 @@ def get_room_data(request, room_id):
             'upload_date': photo.upload_date.strftime('%Y-%m-%d %H:%M')
         } for photo in photos]
         
+        # Get first image URL for recent/card display
+        image_url = None
+        if photos.exists():
+            image_url = photos.first().image.url
+        elif room.profile and room.profile.images:
+            image_url = room.profile.images.url
+        
         return JsonResponse({
             'id': room.id,
             'name': room.profile.name if room.profile else '',
@@ -915,7 +1007,8 @@ def get_room_data(request, room_id):
             'floor': room.floor.name if room.floor else '',
             'building': room.floor.building if room.floor else '',
             'coordinates': coordinates,
-            'photos': photos_data
+            'photos': photos_data,
+            'image_url': image_url
         })
     except Exception as e:
         print(f"Error getting room data: {str(e)}")
@@ -1114,3 +1207,191 @@ def delete_feedback(request, feedback_id):
         print(f"Error deleting feedback {feedback_id}: {str(e)}")
         print(f"Admin user: {request.user.username}")
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required(login_url='login')
+def saved_locations_view(request):
+    """Display user's saved locations, organized by building, floor, and room"""
+    try:
+        # Get all saved locations for the user
+        saved_locations = SavedLocation.objects.filter(user=request.user).select_related(
+            'room', 'room__floor', 'room__profile'
+        ).prefetch_related('room__room_images').order_by('-saved_date')
+        
+        # Organize locations by building > floor > room
+        organized_locations = {}
+        
+        for saved in saved_locations:
+            room = saved.room
+            floor = room.floor
+            building = floor.building
+            
+            # Initialize building if not exists
+            if building not in organized_locations:
+                organized_locations[building] = {}
+            
+            # Initialize floor if not exists
+            if floor.id not in organized_locations[building]:
+                organized_locations[building][floor.id] = {
+                    'floor_name': floor.name,
+                    'floor_id': floor.id,
+                    'rooms': []
+                }
+            
+            # Get first room image if available
+            room_images = room.room_images.all()
+            first_image = room_images.first() if room_images else None
+            
+            # Add room to floor
+            room_data = {
+                'room_id': room.id,
+                'room_name': room.profile.name if hasattr(room, 'profile') and room.profile else f'Room {room.id}',
+                'room_number': room.profile.number if hasattr(room, 'profile') and room.profile else 'N/A',
+                'room_type': room.profile.type if hasattr(room, 'profile') and room.profile else 'Unknown',
+                'room_description': room.profile.description if hasattr(room, 'profile') and room.profile else '',
+                'room_image': first_image.image.url if first_image else None,
+                'saved_date': saved.saved_date,
+                'saved_id': saved.id
+            }
+            organized_locations[building][floor.id]['rooms'].append(room_data)
+        
+        # Sort rooms in each floor by name
+        for building in organized_locations:
+            for floor_id in organized_locations[building]:
+                organized_locations[building][floor_id]['rooms'].sort(
+                    key=lambda x: x['room_name']
+                )
+        
+        # Convert to list format for template
+        buildings_list = []
+        for building_name in sorted(organized_locations.keys()):
+            floors_list = []
+            for floor_id in sorted(organized_locations[building_name].keys(), 
+                                  key=lambda x: organized_locations[building_name][x]['floor_name']):
+                floor_data = organized_locations[building_name][floor_id]
+                floors_list.append({
+                    'floor_id': floor_data['floor_id'],
+                    'floor_name': floor_data['floor_name'],
+                    'rooms': floor_data['rooms'],
+                    'room_count': len(floor_data['rooms'])
+                })
+            
+            buildings_list.append({
+                'building_name': building_name,
+                'floors': floors_list,
+                'floor_count': len(floors_list),
+                'room_count': sum(len(f['rooms']) for f in floors_list)
+            })
+        
+        context = {
+            'buildings': buildings_list,
+            'total_saved': saved_locations.count(),
+            'has_saved': saved_locations.exists()
+        }
+        
+        return render(request, 'UMAP_App/Users/Users_Saved.html', context)
+    
+    except Exception as e:
+        print(f"Error in saved_locations_view: {str(e)}")
+        messages.error(request, 'Error loading saved locations')
+        return render(request, 'UMAP_App/Users/Users_Saved.html', {
+            'buildings': [],
+            'total_saved': 0,
+            'has_saved': False
+        })
+
+def recent_locations_view(request):
+    """Display user's recently viewed locations (last 10 unique rooms/floors)
+    For authenticated users: shows UserActivity records
+    For guests: shows sessionStorage cached data via JavaScript
+    """
+    try:
+        recent_places = []
+        organized_places = {}
+        
+        # Only query database if user is authenticated
+        if request.user.is_authenticated:
+            # Get recent room and floor views for the user (last 10 unique places)
+            recent_activities = UserActivity.objects.filter(
+                user=request.user,
+                activity_type__in=['room_view', 'floor_view']
+            ).select_related('user').order_by('-timestamp')[:50]  # Get more to filter unique
+            
+            # Track unique rooms and floors to avoid duplicates
+            seen_rooms = set()
+            seen_floors = set()
+            
+            for activity in recent_activities:
+                if len(recent_places) >= 10:
+                    break
+                    
+                details = activity.details or {}
+                
+                if activity.activity_type == 'room_view':
+                    room_id = details.get('room_id')
+                    if room_id and room_id not in seen_rooms:
+                        seen_rooms.add(room_id)
+                        try:
+                            room = Room.objects.select_related('floor', 'profile').prefetch_related('images').get(id=room_id)
+                            # Get first image if available
+                            image_url = None
+                            if room.images.exists():
+                                image_url = room.images.first().image.url if room.images.first().image else None
+                            recent_places.append({
+                                'type': 'room',
+                                'id': room.id,
+                                'name': room.profile.name if room.profile else f'Room {room.id}',
+                                'number': room.profile.number if room.profile else 'N/A',
+                                'building': room.floor.building,
+                                'floor': room.floor.name,
+                                'floor_id': room.floor.id,
+                                'timestamp': activity.timestamp,
+                                'description': room.profile.description if room.profile else '',
+                                'image_url': image_url
+                            })
+                        except Room.DoesNotExist:
+                            pass
+                            
+                elif activity.activity_type == 'floor_view':
+                    floor_id = details.get('floor_id')
+                    if floor_id and floor_id not in seen_floors:
+                        seen_floors.add(floor_id)
+                        try:
+                            floor = Floor.objects.get(id=floor_id)
+                            recent_places.append({
+                                'type': 'floor',
+                                'id': floor.id,
+                                'name': floor.name,
+                                'building': floor.building,
+                                'timestamp': activity.timestamp,
+                                'room_count': floor.rooms.count()
+                            })
+                        except Floor.DoesNotExist:
+                            pass
+            
+            # Organize by building
+            for place in recent_places:
+                building = place['building']
+                if building not in organized_places:
+                    organized_places[building] = []
+                organized_places[building].append(place)
+        
+        context = {
+            'recent_places': recent_places,
+            'organized_places': organized_places,
+            'total_recent': len(recent_places),
+            'has_recent': len(recent_places) > 0
+        }
+        
+        return render(request, 'UMAP_App/Users/Users_Recent.html', context)
+    
+    except Exception as e:
+        print(f"Error in recent_locations_view: {str(e)}")
+        messages.error(request, 'Error loading recent locations')
+        return render(request, 'UMAP_App/Users/Users_Recent.html', {
+            'recent_places': [],
+            'organized_places': {},
+            'total_recent': 0,
+            'has_recent': False
+        })
+

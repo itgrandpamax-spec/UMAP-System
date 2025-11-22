@@ -1,0 +1,641 @@
+{% extends 'UMAP_App/Users/Users_base.html' %}
+{% load static %}
+
+{% block title %}Recent Locations - UMAP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .recent-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        margin-left: 280px;
+        padding: 1.5rem;
+        max-height: calc(100vh - 100px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        width: calc(100% - 280px);
+        height: auto;
+    }
+
+    @media (max-width: 1024px) {
+        .recent-container {
+            margin-left: 0;
+            width: 100%;
+        }
+    }
+
+    /* Custom scrollbar styling */
+    .recent-container::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .recent-container::-webkit-scrollbar-track {
+        background: rgba(71, 85, 105, 0.1);
+        border-radius: 4px;
+    }
+
+    .recent-container::-webkit-scrollbar-thumb {
+        background: rgba(59, 130, 246, 0.4);
+        border-radius: 4px;
+    }
+
+    .recent-container::-webkit-scrollbar-thumb:hover {
+        background: rgba(59, 130, 246, 0.6);
+    }
+
+    /* Firefox scrollbar */
+    .recent-container {
+        scrollbar-color: rgba(59, 130, 246, 0.4) rgba(71, 85, 105, 0.1);
+        scrollbar-width: thin;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        color: #475569;
+        opacity: 0.5;
+    }
+
+    .building-group {
+        margin-bottom: 2rem;
+    }
+
+    .building-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #e2e8f0;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .building-title i {
+        color: #3b82f6;
+    }
+
+    .places-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    @media (min-width: 1200px) {
+        .places-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+    
+    @media (min-width: 1600px) {
+        .places-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
+    .place-card {
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(71, 85, 105, 0.2);
+        border-radius: 0.5rem;
+        padding: 1.25rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .place-card:hover {
+        transform: translateY(-3px);
+        background: rgba(30, 41, 59, 0.95);
+        border-color: rgba(59, 130, 246, 0.4);
+        box-shadow: 0 8px 16px rgba(59, 130, 246, 0.15);
+    }
+
+    .place-icon {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+        color: #3b82f6;
+    }
+
+    .place-type {
+        font-size: 0.75rem;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+
+    .place-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #e2e8f0;
+        margin-bottom: 0.5rem;
+    }
+
+    .place-details {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        margin-bottom: 0.75rem;
+        flex-grow: 1;
+    }
+
+    .place-details i {
+        margin-right: 0.4rem;
+        color: #64748b;
+    }
+
+    .place-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 0.75rem;
+        border-top: 1px solid rgba(71, 85, 105, 0.1);
+    }
+
+    .place-time {
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+
+    .place-badge {
+        display: inline-block;
+        background: rgba(139, 92, 246, 0.1);
+        color: #c4b5fd;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    .header-section {
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8));
+        border-bottom: 1px solid rgba(71, 85, 105, 0.2);
+        padding: 2.5rem;
+        margin-bottom: 2.5rem;
+        border-radius: 0.75rem;
+    }
+
+    .header-title {
+        font-size: 2.25rem;
+        font-weight: 700;
+        color: #f1f5f9;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .header-title i {
+        color: #3b82f6;
+    }
+
+    .header-subtitle {
+        color: #94a3b8;
+        font-size: 1rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .stat-card {
+        background: rgba(59, 130, 246, 0.05);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #3b82f6;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-top: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* Scroll-to-top button */
+    #scrollToTopBtn {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 50px;
+        height: 50px;
+        background: rgba(59, 130, 246, 0.2);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        color: #93c5fd;
+        border-radius: 50%;
+        cursor: pointer;
+        display: none;
+        font-size: 1.25rem;
+        z-index: 100;
+        transition: all 0.3s ease;
+    }
+
+    #scrollToTopBtn:hover {
+        background: rgba(59, 130, 246, 0.3);
+        border-color: rgba(59, 130, 246, 0.5);
+    }
+
+    @media (max-width: 768px) {
+        .recent-container {
+            padding: 1rem;
+        }
+
+        .header-section {
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .header-title {
+            font-size: 1.75rem;
+        }
+
+        .places-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .place-card {
+            padding: 1rem;
+        }
+
+        #scrollToTopBtn {
+            bottom: 100px;
+            right: 15px;
+            width: 45px;
+            height: 45px;
+            font-size: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="recent-container">
+    <!-- Scroll-to-top button -->
+    <button id="scrollToTopBtn" onclick="scrollToTop()" title="Go to top">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-title">
+            <i class="fas fa-history"></i>
+            Recent Locations
+        </div>
+        <div class="header-subtitle">
+            <span id="subtitle-text">
+                {% if has_recent %}
+                    You have {{ total_recent }} recent location{{ total_recent|pluralize }}
+                {% else %}
+                    No recent locations yet
+                {% endif %}
+            </span>
+        </div>
+
+        {% if has_recent %}
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">{{ organized_places|length }}</div>
+                <div class="stat-label">Buildings Visited</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ total_recent }}</div>
+                <div class="stat-label">Recent Places</div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Container for dynamic content -->
+    <div id="recent-content"></div>
+
+    <!-- Recent Places by Building -->
+    <div id="authenticated-content" style="display: none;"></div>
+    
+    <!-- Guest Content Area (will be populated by JavaScript) -->
+    <div id="guest-content" style="display: none;"></div>
+</div>
+
+<script>
+    // Load appropriate recent data based on authentication status
+    document.addEventListener('DOMContentLoaded', () => {
+        const isAuthenticated = document.body.dataset.authenticated === 'true';
+        const authenticatedContent = document.getElementById('authenticated-content');
+        const guestContent = document.getElementById('guest-content');
+        
+        console.log('Recent page DOMContentLoaded - isAuthenticated:', isAuthenticated);
+        
+        if (!isAuthenticated) {
+            // For guests: hide authenticated content and show guest content from sessionStorage
+            console.log('Loading guest recent data from sessionStorage');
+            authenticatedContent.style.display = 'none';
+            guestContent.style.display = 'block';
+            loadGuestRecentData();
+        } else {
+            // For authenticated users: hide guest content and load from database via API
+            console.log('Loading authenticated user recent data from API');
+            guestContent.style.display = 'none';
+            authenticatedContent.style.display = 'block';
+            // Clear any old guest data from sessionStorage
+            sessionStorage.removeItem('recentRoomViews');
+            loadAuthenticatedRecentData();
+        }
+    });
+
+    // Load authenticated user's recent data dynamically
+    function loadAuthenticatedRecentData() {
+        const authenticatedContent = document.getElementById('authenticated-content');
+        
+        console.log('=== loadAuthenticatedRecentData called ===');
+        console.log('User authenticated:', document.body.dataset.authenticated);
+        console.log('Fetching from: /api/user/recent/');
+        
+        // Fetch recent data from the API
+        fetch('/api/user/recent/')
+            .then(response => {
+                console.log('API response status:', response.status);
+                console.log('Response object:', response);
+                if (!response.ok) {
+                    console.error('API returned non-200 status');
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('=== API data received ===');
+                console.log('Full data:', data);
+                console.log('Status:', data.status);
+                console.log('Recent places:', data.recent_places);
+                console.log('Total recent:', data.total_recent);
+                
+                if (data.status === 'success' && data.recent_places && data.recent_places.length > 0) {
+                    let html = '';
+                    const groupedByBuilding = {};
+                    
+                    // Group by building
+                    data.recent_places.forEach(place => {
+                        const building = place.building;
+                        if (!groupedByBuilding[building]) {
+                            groupedByBuilding[building] = [];
+                        }
+                        groupedByBuilding[building].push(place);
+                    });
+                    
+                    // Build HTML for each building
+                    Object.keys(groupedByBuilding).forEach(building => {
+                        html += '<div class="building-group"><div class="building-title"><i class="fas fa-building"></i>' + building + '</div><div class="places-grid">';
+                        
+                        groupedByBuilding[building].forEach(place => {
+                            html += '<div class="place-card" onclick="navigateToPlace(\'' + place.type + '\', ' + place.id + ')">';
+                            
+                            // Add image if available
+                            if (place.image_url) {
+                                html += '<div style="width: 100%; height: 120px; background: url(' + place.image_url + ') center/cover; border-radius: 0.375rem; margin-bottom: 0.75rem; overflow: hidden; border: 1px solid rgba(71, 85, 105, 0.2);"></div>';
+                            }
+                            
+                            if (place.type === 'room') {
+                                html += '<div class="place-icon"><i class="fas fa-door-open"></i></div>';
+                                html += '<div class="place-type">Room</div>';
+                                html += '<div class="place-name">' + place.name + '</div>';
+                                html += '<div class="place-details">';
+                                html += '<div><i class="fas fa-layer-group"></i>' + place.floor + '</div>';
+                                html += '<div><i class="fas fa-door-closed"></i>Room ' + place.number + '</div>';
+                                html += '</div>';
+                                if (place.description) {
+                                    html += '<div class="place-details" style="color: #64748b; margin-top: 0.5rem;">' + place.description.substring(0, 50) + '...</div>';
+                                }
+                            } else if (place.type === 'floor') {
+                                html += '<div class="place-icon"><i class="fas fa-layer-group"></i></div>';
+                                html += '<div class="place-type">Floor</div>';
+                                html += '<div class="place-name">' + place.name + '</div>';
+                                html += '<div class="place-details">';
+                                html += '<div><i class="fas fa-door-open"></i>' + place.room_count + ' room(s)</div>';
+                                html += '</div>';
+                            }
+                            
+                            html += '<div class="place-meta">';
+                            html += '<span class="place-time">' + place.time_ago + '</span>';
+                            html += '<span class="place-badge">' + (place.type === 'room' ? 'Room' : 'Floor') + '</span>';
+                            html += '</div></div>';
+                        });
+                        
+                        html += '</div></div>';
+                    });
+                    
+                    authenticatedContent.innerHTML = html;
+                    
+                    // Update subtitle
+                    const subtitleText = document.getElementById('subtitle-text');
+                    subtitleText.textContent = `You have ${data.recent_places.length} recent location${data.recent_places.length !== 1 ? 's' : ''}`;
+                } else {
+                    // Empty state
+                    console.log('No recent places found - data status:', data.status);
+                    console.log('Recent places:', data.recent_places);
+                    authenticatedContent.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-history"></i>
+                            <h3 style="font-size: 1.5rem; color: #cbd5e1; margin-bottom: 0.5rem;">No Recent Locations Yet</h3>
+                            <p style="margin-bottom: 1.5rem;">Start exploring the map to see your recently viewed places here!</p>
+                            <a href="{% url 'default_view' %}" style="display: inline-block; background: rgba(59, 130, 246, 0.2); color: #93c5fd; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid rgba(59, 130, 246, 0.3); transition: all 0.3s ease;" onmouseover="this.style.background='rgba(59, 130, 246, 0.3)'; this.style.borderColor='rgba(59, 130, 246, 0.5)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.2)'; this.style.borderColor='rgba(59, 130, 246, 0.3)'">
+                                <i class="fas fa-map" style="margin-right: 0.5rem;"></i>
+                                Explore Map
+                            </a>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('=== ERROR loading authenticated recent data ===');
+                console.error('Error:', error);
+                console.error('Stack:', error.stack);
+                authenticatedContent.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <h3 style="font-size: 1.5rem; color: #cbd5e1; margin-bottom: 0.5rem;">Error Loading Recent Locations</h3>
+                        <p>Error details: ${error.message}</p>
+                        <p>Check the browser console for more information.</p>
+                    </div>
+                `;
+            });
+    }
+
+    // Load recent rooms from sessionStorage for guests
+    function loadGuestRecentData() {
+        const recentViews = JSON.parse(sessionStorage.getItem('recentRoomViews') || '[]');
+        const authenticatedContent = document.getElementById('authenticated-content');
+        const guestContent = document.getElementById('guest-content');
+        
+        authenticatedContent.style.display = 'none';
+        guestContent.style.display = 'block';
+        
+        if (recentViews.length === 0) {
+            // Empty state for guests
+            guestContent.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-history"></i>
+                    <h3 style="font-size: 1.5rem; color: #cbd5e1; margin-bottom: 0.5rem;">No Recent Locations Yet</h3>
+                    <p style="margin-bottom: 1.5rem;">Start exploring the map to see your recently viewed places here!</p>
+                    <a href="{% url 'default_view' %}" style="display: inline-block; background: rgba(59, 130, 246, 0.2); color: #93c5fd; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid rgba(59, 130, 246, 0.3); transition: all 0.3s ease;" onmouseover="this.style.background='rgba(59, 130, 246, 0.3)'; this.style.borderColor='rgba(59, 130, 246, 0.5)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.2)'; this.style.borderColor='rgba(59, 130, 246, 0.3)'">
+                        <i class="fas fa-map" style="margin-right: 0.5rem;"></i>
+                        Explore Map
+                    </a>
+                </div>
+            `;
+            return;
+        }
+        
+        // Fetch room data for each recent view and build cards
+        let html = '<div class="building-group"><div class="building-title"><i class="fas fa-building"></i>Your Session</div><div class="places-grid">';
+        
+        // Fetch missing data for rooms that don't have complete info
+        const fetchPromises = recentViews.map(view => {
+            // If we have stored room data, use it; otherwise fetch from API
+            if (view.name && view.number && view.floorName) {
+                // Use stored data
+                return Promise.resolve({
+                    roomId: view.id,
+                    roomName: view.name,
+                    roomNumber: view.number,
+                    floorName: view.floorName,
+                    imageUrl: view.imageUrl,
+                    type: view.type
+                });
+            } else {
+                // Fetch missing data from API
+                return fetch(`/api/room/${view.id}/`)
+                    .then(response => response.json())
+                    .then(roomData => {
+                        const room = roomData.room || roomData;
+                        return {
+                            roomId: view.id,
+                            roomName: room.name || room.room_name || view.name || `Room ${view.number}`,
+                            roomNumber: room.number || room.room_number || view.number || view.id,
+                            floorName: room.floor?.name || room.floor_name || view.floorName || 'Unknown Floor',
+                            imageUrl: room.image_url || (room.images?.length > 0 ? room.images[0].image : null) || view.imageUrl,
+                            type: room.type || room.room_type || view.type || 'Room'
+                        };
+                    })
+                    .catch(error => {
+                        console.log('Failed to fetch room details for room ' + view.id + ':', error);
+                        return {
+                            roomId: view.id,
+                            roomName: view.name || `Room ${view.number}`,
+                            roomNumber: view.number || view.id,
+                            floorName: view.floorName || 'Unknown Floor',
+                            imageUrl: view.imageUrl,
+                            type: view.type || 'Room'
+                        };
+                    });
+            }
+        });
+        
+        // Wait for all promises and combine HTML
+        Promise.all(fetchPromises).then(cardDataArray => {
+            let cardsHtml = '';
+            cardDataArray.forEach(cardData => {
+                const timeAgo = getTimeAgo(recentViews.find(v => v.id === cardData.roomId).timestamp);
+                let cardHtml = '<div class="place-card" onclick="navigateToPlace(\'room\', ' + cardData.roomId + ')">';
+                
+                // Add image if available
+                if (cardData.imageUrl) {
+                    cardHtml += '<div style="width: 100%; height: 120px; background: url(' + cardData.imageUrl + ') center/cover; border-radius: 0.375rem; margin-bottom: 0.75rem; overflow: hidden; border: 1px solid rgba(71, 85, 105, 0.2);"></div>';
+                }
+                
+                cardHtml += '<div class="place-icon"><i class="fas fa-door-open"></i></div>';
+                cardHtml += '<div class="place-type">' + cardData.type + '</div>';
+                cardHtml += '<div class="place-name">' + cardData.roomName + '</div>';
+                cardHtml += '<div class="place-details">';
+                cardHtml += '<div><i class="fas fa-layer-group"></i>' + cardData.floorName + '</div>';
+                cardHtml += '<div><i class="fas fa-door-closed"></i>Room ' + cardData.roomNumber + '</div>';
+                cardHtml += '</div>';
+                cardHtml += '<div class="place-meta">';
+                cardHtml += '<span class="place-time">' + timeAgo + '</span>';
+                cardHtml += '<span class="place-badge">Room</span>';
+                cardHtml += '</div></div>';
+                
+                cardsHtml += cardHtml;
+            });
+            
+            html += cardsHtml;
+            html += '</div></div>';
+            guestContent.innerHTML = html;
+            
+            // Update stats
+            const subtitleText = document.getElementById('subtitle-text');
+            subtitleText.textContent = `You have ${recentViews.length} recent location${recentViews.length !== 1 ? 's' : ''}`;
+        });
+    }
+
+    // Helper function to format time ago
+    function getTimeAgo(timestamp) {
+        const now = new Date();
+        const then = new Date(timestamp);
+        const seconds = Math.floor((now - then) / 1000);
+        
+        if (seconds < 60) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        return `${days}d ago`;
+    }
+
+    function scrollToTop() {
+        const container = document.querySelector('.recent-container');
+        container.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    }
+
+    function navigateToPlace(type, id) {
+        // Navigate to map with the place selected
+        if (type === 'room') {
+            window.location.href = `{% url 'default_view' %}?room=${id}`;
+        } else if (type === 'floor') {
+            window.location.href = `{% url 'default_view' %}?floor=${id}`;
+        }
+    }
+
+    // Scroll-to-top button functionality
+    const container = document.querySelector('.recent-container');
+    const scrollBtn = document.getElementById('scrollToTopBtn');
+
+    if (container && scrollBtn) {
+        container.addEventListener('scroll', () => {
+            if (container.scrollTop > 300) {
+                scrollBtn.style.display = 'block';
+            } else {
+                scrollBtn.style.display = 'none';
+            }
+        });
+    }
+
+    // Show scroll button on load if needed
+    window.addEventListener('load', () => {
+        if (container && container.scrollTop > 300) {
+            scrollBtn.style.display = 'block';
+        }
+    });
+</script>
+{% endblock %}

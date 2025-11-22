@@ -1,0 +1,829 @@
+{% extends 'UMAP_App/Users/Users_base.html' %}
+{% load static %}
+
+{% block title %}Saved Locations - UMAP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .saved-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        margin-left: 280px;
+        padding: 1.5rem;
+        max-height: calc(100vh - 100px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        width: calc(100% - 280px);
+        height: auto;
+    }
+
+    @media (max-width: 1024px) {
+        .saved-container {
+            margin-left: 0;
+            width: 100%;
+        }
+    }
+
+    /* Custom scrollbar styling */
+    .saved-container::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .saved-container::-webkit-scrollbar-track {
+        background: rgba(71, 85, 105, 0.1);
+        border-radius: 4px;
+    }
+
+    .saved-container::-webkit-scrollbar-thumb {
+        background: rgba(59, 130, 246, 0.4);
+        border-radius: 4px;
+    }
+
+    .saved-container::-webkit-scrollbar-thumb:hover {
+        background: rgba(59, 130, 246, 0.6);
+    }
+
+    /* Firefox scrollbar */
+    .saved-container {
+        scrollbar-color: rgba(59, 130, 246, 0.4) rgba(71, 85, 105, 0.1);
+        scrollbar-width: thin;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        color: #475569;
+        opacity: 0.5;
+    }
+
+    .building-section {
+        margin-bottom: 2.5rem;
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(71, 85, 105, 0.2);
+        border-radius: 0.75rem;
+        overflow: hidden;
+    }
+
+    .building-header {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+        border-bottom: 1px solid rgba(71, 85, 105, 0.2);
+        padding: 1.75rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s ease;
+    }
+
+    .building-header:hover {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
+    }
+
+    .building-title {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        font-size: 1.35rem;
+        font-weight: 600;
+        color: #e2e8f0;
+    }
+
+    .building-title i {
+        color: #3b82f6;
+        font-size: 1.75rem;
+    }
+
+    .building-stats {
+        display: flex;
+        gap: 2.5rem;
+        font-size: 0.9rem;
+        color: #94a3b8;
+    }
+
+    .stat-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(59, 130, 246, 0.1);
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .chevron-icon {
+        transition: transform 0.3s ease;
+        color: #64748b;
+    }
+
+    .building-section.collapsed .chevron-icon {
+        transform: rotate(-90deg);
+    }
+
+    .floors-container {
+        max-height: 2000px;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+
+    .building-section.collapsed .floors-container {
+        max-height: 0;
+    }
+
+    .floor-item {
+        border-bottom: 1px solid rgba(71, 85, 105, 0.1);
+    }
+
+    .floor-item:last-child {
+        border-bottom: none;
+    }
+
+    .floor-header {
+        padding: 1.25rem 1.5rem;
+        background: rgba(15, 23, 42, 0.3);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .floor-header:hover {
+        background: rgba(15, 23, 42, 0.5);
+    }
+
+    .floor-title {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        font-weight: 500;
+        color: #cbd5e1;
+        font-size: 1.05rem;
+    }
+
+    .floor-title i {
+        color: #8b5cf6;
+        font-size: 1.25rem;
+    }
+
+    .floor-room-count {
+        background: rgba(139, 92, 246, 0.1);
+        color: #c4b5fd;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.25rem;
+        font-size: 0.8rem;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    .rooms-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+        padding: 1.5rem;
+        background: rgba(15, 23, 42, 0.2);
+    }
+
+    .room-card {
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(71, 85, 105, 0.2);
+        border-radius: 0.5rem;
+        padding: 1.25rem;
+        transition: all 0.3s ease;
+    }
+
+    .room-card:hover {
+        transform: translateY(-3px);
+        background: rgba(30, 41, 59, 0.95);
+        border-color: rgba(59, 130, 246, 0.4);
+        box-shadow: 0 8px 16px rgba(59, 130, 246, 0.15);
+    }
+
+    .room-image-preview {
+        width: 100%;
+        height: 180px;
+        background: rgba(15, 23, 42, 0.8);
+        border-radius: 0.375rem;
+        overflow: hidden;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(71, 85, 105, 0.2);
+    }
+
+    .room-image-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .room-card:hover .room-image-preview img {
+        transform: scale(1.05);
+    }
+
+    .room-image-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #475569;
+        background: linear-gradient(135deg, rgba(71, 85, 105, 0.1), rgba(59, 130, 246, 0.05));
+    }
+
+    .room-image-placeholder i {
+        font-size: 2rem;
+    }
+
+    .room-number {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .room-name {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #e2e8f0;
+        margin: 0.75rem 0;
+    }
+
+    .room-type {
+        font-size: 0.9rem;
+        color: #cbd5e1;
+        background: rgba(139, 92, 246, 0.1);
+        padding: 0.35rem 0.75rem;
+        border-radius: 0.25rem;
+        display: inline-block;
+        margin-bottom: 0.75rem;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    .room-description {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        line-height: 1.5;
+        margin: 0.75rem 0;
+        max-height: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .room-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(71, 85, 105, 0.1);
+    }
+
+    .action-btn {
+        flex: 1;
+        padding: 0.5rem;
+        border: none;
+        border-radius: 0.375rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .remove-btn {
+        background: rgba(239, 68, 68, 0.1);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .remove-btn:hover {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+    }
+
+    .navigate-btn {
+        background: rgba(59, 130, 246, 0.1);
+        color: #93c5fd;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        flex: 2;
+    }
+
+    .navigate-btn:hover {
+        background: rgba(59, 130, 246, 0.2);
+        color: #93c5fd;
+    }
+
+    .header-section {
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8));
+        border-bottom: 1px solid rgba(71, 85, 105, 0.2);
+        padding: 2.5rem;
+        margin-bottom: 2.5rem;
+        border-radius: 0.75rem;
+    }
+
+    .header-title {
+        font-size: 2.25rem;
+        font-weight: 700;
+        color: #f1f5f9;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .header-title i {
+        color: #3b82f6;
+    }
+
+    .header-subtitle {
+        color: #94a3b8;
+        font-size: 1rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .stat-card {
+        background: rgba(59, 130, 246, 0.05);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #3b82f6;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-top: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .page-header {
+        padding: 1rem 0;
+    }
+
+    /* Scroll-to-top button */
+    #scrollToTopBtn {
+        position: fixed;
+        bottom: 100px;
+        right: 30px;
+        z-index: 99;
+        border: none;
+        background: rgba(59, 130, 246, 0.2);
+        color: #93c5fd;
+        cursor: pointer;
+        padding: 12px 15px;
+        border-radius: 50%;
+        font-size: 18px;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        display: none;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(8px);
+    }
+
+    #scrollToTopBtn:hover {
+        background: rgba(59, 130, 246, 0.4);
+        border-color: rgba(59, 130, 246, 0.6);
+        transform: translateY(-2px);
+    }
+
+    #scrollToTopBtn.show {
+        display: block;
+    }
+
+    @media (max-width: 640px) {
+        .saved-container {
+            padding: 1rem;
+        }
+
+        .building-header {
+            padding: 1rem;
+        }
+
+        .header-section {
+            padding: 1.5rem;
+        }
+
+        .header-title {
+            font-size: 1.5rem;
+        }
+
+        .rooms-container {
+            grid-template-columns: 1fr;
+            padding: 1rem;
+        }
+
+        .building-stats {
+            gap: 1rem;
+            font-size: 0.75rem;
+        }
+
+        .stat-badge {
+            padding: 0.375rem 0.5rem;
+            font-size: 0.75rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="saved-container">
+    <!-- Scroll-to-top button -->
+    <button id="scrollToTopBtn" onclick="scrollToTop()" title="Go to top">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-title">
+            <i class="fas fa-bookmark"></i>
+            Saved Locations
+        </div>
+        <div class="header-subtitle">
+            {% if has_saved %}
+                You have {{ total_saved }} saved location{{ total_saved|pluralize }}
+            {% else %}
+                No saved locations yet
+            {% endif %}
+        </div>
+
+        {% if has_saved %}
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">{{ buildings|length }}</div>
+                <div class="stat-label">Buildings</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ total_saved }}</div>
+                <div class="stat-label">Locations</div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Buildings List -->
+    {% if has_saved %}
+        {% for building in buildings %}
+        <div class="building-section" data-building="{{ building.building_name }}">
+            <div class="building-header" onclick="toggleBuilding(this)">
+                <div class="building-title">
+                    <i class="fas fa-building"></i>
+                    <div>
+                        <div>{{ building.building_name }}</div>
+                        <div class="building-stats">
+                            <div class="stat-badge">
+                                <i class="fas fa-layer-group" style="font-size: 0.8rem;"></i>
+                                {{ building.floor_count }} Floor{{ building.floor_count|pluralize }}
+                            </div>
+                            <div class="stat-badge">
+                                <i class="fas fa-door-open" style="font-size: 0.8rem;"></i>
+                                {{ building.room_count }} Room{{ building.room_count|pluralize }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <i class="chevron-icon fas fa-chevron-down"></i>
+            </div>
+
+            <div class="floors-container">
+                {% for floor in building.floors %}
+                <div class="floor-item">
+                    <div class="floor-header" onclick="toggleFloor(event)">
+                        <div class="floor-title">
+                            <i class="fas fa-layer-group"></i>
+                            {{ floor.floor_name }}
+                        </div>
+                        <div class="floor-room-count">
+                            {{ floor.room_count }} room{{ floor.room_count|pluralize }}
+                        </div>
+                    </div>
+
+                    <div class="rooms-container">
+                        {% for room in floor.rooms %}
+                        <div class="room-card" data-room-id="{{ room.room_id }}">
+                            {% if room.room_image %}
+                            <div class="room-image-preview">
+                                <img src="{{ room.room_image }}" alt="{{ room.room_name }}" loading="lazy">
+                            </div>
+                            {% else %}
+                            <div class="room-image-preview">
+                                <div class="room-image-placeholder">
+                                    <i class="fas fa-image"></i>
+                                </div>
+                            </div>
+                            {% endif %}
+                            <div class="room-number">Room {{ room.room_number }}</div>
+                            <div class="room-name">{{ room.room_name }}</div>
+                            {% if room.room_type %}
+                            <div class="room-type">{{ room.room_type }}</div>
+                            {% endif %}
+                            {% if room.room_description %}
+                            <div class="room-description">{{ room.room_description }}</div>
+                            {% endif %}
+                            <!-- Room Ratings -->
+                            <div class="room-ratings" style="margin: 0.75rem 0; padding: 0.75rem; background: rgba(59, 130, 246, 0.05); border-radius: 0.375rem; border: 1px solid rgba(59, 130, 246, 0.1);">
+                                <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; margin-bottom: 0.35rem;">Rating</div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <div id="rating-stars-{{ room.room_id }}" style="display: flex; gap: 0.2rem;">
+                                        <i class="fas fa-star" style="color: #94a3b8; font-size: 0.9rem;"></i>
+                                        <i class="fas fa-star" style="color: #94a3b8; font-size: 0.9rem;"></i>
+                                        <i class="fas fa-star" style="color: #94a3b8; font-size: 0.9rem;"></i>
+                                        <i class="fas fa-star" style="color: #94a3b8; font-size: 0.9rem;"></i>
+                                        <i class="fas fa-star" style="color: #94a3b8; font-size: 0.9rem;"></i>
+                                    </div>
+                                    <span id="rating-count-{{ room.room_id }}" style="font-size: 0.75rem; color: #64748b;">0 reviews</span>
+                                </div>
+                            </div>
+                            <div class="room-actions">
+                                <button class="action-btn navigate-btn" onclick="navigateToRoom({{ room.room_id }})">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span class="hidden sm:inline">Navigate</span>
+                                </button>
+                                <button class="action-btn remove-btn" onclick="removeSavedLocation({{ room.room_id }}, this)">
+                                    <i class="fas fa-trash-alt"></i>
+                                    <span class="hidden sm:inline">Remove</span>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <i class="fas fa-bookmark"></i>
+            <h3 style="font-size: 1.5rem; color: #cbd5e1; margin-bottom: 0.5rem;">No Saved Locations Yet</h3>
+            <p style="margin-bottom: 1.5rem;">Start exploring the map and save your favorite locations!</p>
+            <a href="{% url 'default_view' %}" style="display: inline-block; background: rgba(59, 130, 246, 0.2); color: #93c5fd; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid rgba(59, 130, 246, 0.3); transition: all 0.3s ease;" onmouseover="this.style.background='rgba(59, 130, 246, 0.3)'; this.style.borderColor='rgba(59, 130, 246, 0.5)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.2)'; this.style.borderColor='rgba(59, 130, 246, 0.3)'">
+                <i class="fas fa-map" style="margin-right: 0.5rem;"></i>
+                Explore Map
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    function toggleBuilding(header) {
+        const section = header.closest('.building-section');
+        section.classList.toggle('collapsed');
+        
+        // Also toggle the floors visibility
+        const floorsContainer = section.querySelector('.floors-container');
+        if (floorsContainer) {
+            if (floorsContainer.style.maxHeight) {
+                floorsContainer.style.maxHeight = '';
+            } else {
+                floorsContainer.style.maxHeight = '2000px';
+            }
+        }
+    }
+
+    function toggleFloor(event) {
+        event.stopPropagation();
+        const floorHeader = event.currentTarget;
+        const floorItem = floorHeader.closest('.floor-item');
+        const roomsContainer = floorItem.querySelector('.rooms-container');
+        
+        if (roomsContainer) {
+            if (roomsContainer.style.display === 'none') {
+                roomsContainer.style.display = 'grid';
+            } else {
+                roomsContainer.style.display = 'none';
+            }
+        }
+    }
+    
+    function loadRoomRatings() {
+        const roomCards = document.querySelectorAll('.room-card[data-room-id]');
+        roomCards.forEach(card => {
+            const roomId = card.getAttribute('data-room-id');
+            fetch(`/api/room/${roomId}/ratings/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.average_rating !== undefined) {
+                        const avgRating = data.average_rating || 0;
+                        const count = data.total_ratings || 0;
+                        
+                        const starsContainer = document.getElementById(`rating-stars-${roomId}`);
+                        if (starsContainer) {
+                            starsContainer.innerHTML = '';
+                            for (let i = 1; i <= 5; i++) {
+                                const star = document.createElement('i');
+                                star.className = i <= Math.round(avgRating) ? 'fas fa-star' : 'far fa-star';
+                                star.style.cssText = 'color: ' + (i <= Math.round(avgRating) ? '#fbbf24' : '#94a3b8') + '; font-size: 0.9rem;';
+                                starsContainer.appendChild(star);
+                            }
+                        }
+                        
+                        const countElement = document.getElementById(`rating-count-${roomId}`);
+                        if (countElement) {
+                            countElement.textContent = count + ' review' + (count !== 1 ? 's' : '');
+                        }
+                    }
+                })
+                .catch(error => console.log('Failed to load ratings:', error));
+        });
+    }
+    
+    document.addEventListener('DOMContentLoaded', loadRoomRatings);
+
+    function removeSavedLocation(roomId, button) {
+        if (!confirm('Remove this location from saved?')) {
+            return;
+        }
+
+        const url = `{% url 'remove_location' room_id=0 %}`.replace('0', roomId);
+        
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Animate removal
+                const roomCard = button.closest('.room-card');
+                roomCard.style.opacity = '0.5';
+                roomCard.style.transform = 'scale(0.95)';
+                
+                setTimeout(() => {
+                    roomCard.remove();
+                    
+                    // Get the floor item and rooms container
+                    const floorItem = button.closest('.floor-item');
+                    const roomsContainer = floorItem.querySelector('.rooms-container');
+                    
+                    // Check if floor is now empty
+                    if (roomsContainer && roomsContainer.children.length === 0) {
+                        // Update the floor header to show 0 rooms
+                        const floorRoomCount = floorItem.querySelector('.floor-room-count');
+                        if (floorRoomCount) {
+                            floorRoomCount.textContent = '0 rooms';
+                        }
+                        
+                        // Remove the floor item
+                        floorItem.remove();
+                    } else if (floorRoomCount) {
+                        // Update room count for the floor
+                        const floorRoomCount = floorItem.querySelector('.floor-room-count');
+                        const remainingRooms = roomsContainer ? roomsContainer.children.length : 0;
+                        if (floorRoomCount) {
+                            floorRoomCount.textContent = `${remainingRooms} room${remainingRooms !== 1 ? 's' : ''}`;
+                        }
+                    }
+                    
+                    // Check if building is now empty
+                    const buildingSection = button.closest('.building-section');
+                    const floorsContainer = buildingSection.querySelector('.floors-container');
+                    
+                    if (floorsContainer && floorsContainer.children.length === 0) {
+                        // Update building stats
+                        const buildingStats = buildingSection.querySelector('.building-stats');
+                        if (buildingStats) {
+                            buildingStats.innerHTML = '<div class="stat-badge">0 rooms</div>';
+                        }
+                        
+                        // Remove the building section
+                        buildingSection.remove();
+                    } else if (floorsContainer && buildingSection) {
+                        // Update building room count
+                        let totalRooms = 0;
+                        floorsContainer.querySelectorAll('.rooms-container').forEach(container => {
+                            totalRooms += container.children.length;
+                        });
+                        
+                        const buildingStats = buildingSection.querySelector('.building-stats');
+                        if (buildingStats) {
+                            const floorCount = floorsContainer.children.length;
+                            buildingStats.innerHTML = `
+                                <div class="stat-badge">
+                                    <i class="fas fa-layer-group" style="font-size: 0.8rem;"></i>
+                                    ${floorCount} Floor${floorCount !== 1 ? 's' : ''}
+                                </div>
+                                <div class="stat-badge">
+                                    <i class="fas fa-door-open" style="font-size: 0.8rem;"></i>
+                                    ${totalRooms} Room${totalRooms !== 1 ? 's' : ''}
+                                </div>
+                            `;
+                        }
+                    }
+                    
+                    // Check if all buildings are removed
+                    const buildingSections = document.querySelectorAll('.building-section');
+                    if (buildingSections.length === 0) {
+                        location.reload();
+                    }
+                    
+                    showNotification('Location removed', 'success');
+                }, 300);
+            } else {
+                showNotification('Error removing location: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error removing location', 'error');
+        });
+    }
+
+    function navigateToRoom(roomId) {
+        // Navigate to map and show room details
+        window.location.href = `{% url 'default_view' %}?room=${roomId}`;
+    }
+
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = 'notification flex items-center px-4 py-2 rounded-lg shadow-lg text-white';
+        
+        const bgColor = type.includes('success') ? 'bg-green-500' : 
+                       type.includes('error') ? 'bg-red-500' : 
+                       'bg-blue-500';
+        notification.classList.add(bgColor);
+
+        const messageText = document.createElement('span');
+        messageText.textContent = message;
+        notification.appendChild(messageText);
+
+        const container = document.getElementById('notificationContainer');
+        if (container) {
+            container.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        // Show all floors by default (expand building sections)
+        document.querySelectorAll('.floors-container').forEach(container => {
+            container.style.maxHeight = '2000px';
+        });
+        
+        // Hide all room containers by default (collapsed floors)
+        document.querySelectorAll('.rooms-container').forEach(container => {
+            container.style.display = 'none';
+        });
+        
+        // Add click handlers to all floor headers
+        document.querySelectorAll('.floor-header').forEach(header => {
+            header.style.cursor = 'pointer';
+        });
+        
+        // Add click handlers to all building headers
+        document.querySelectorAll('.building-header').forEach(header => {
+            header.style.cursor = 'pointer';
+        });
+        
+        // Set up scroll listener for the container
+        const container = document.querySelector('.saved-container');
+        if (container) {
+            container.addEventListener('scroll', () => {
+                const scrollBtn = document.getElementById('scrollToTopBtn');
+                if (container.scrollTop > 300) {
+                    scrollBtn.classList.add('show');
+                } else {
+                    scrollBtn.classList.remove('show');
+                }
+            });
+        }
+    });
+
+    // Scroll to top function
+    window.scrollToTop = function() {
+        const container = document.querySelector('.saved-container');
+        if (container) {
+            container.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+    };
+</script>
+{% endblock %}

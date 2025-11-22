@@ -24,7 +24,7 @@
           <p class="text-2xl font-semibold text-white">{{ active_users }}</p>
         </div>
         <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-600">
-          <h4 class="text-sm text-slate-400">New Users (This Month)</h4>
+          <h4 class="text-sm text-slate-400">New Users (This Week)</h4>
           <p class="text-2xl font-semibold text-white">{{ new_users_count|default:0 }}</p>
         </div>
       </div>
@@ -33,17 +33,23 @@
       <div class="bg-slate-800/50 p-6 rounded-2xl shadow-sm border border-slate-600">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-medium text-white">User List</h3>
-          <div class="flex items-center gap-2 text-sm">
-            <input type="text" id="searchInput" 
-                   placeholder="Search users..." 
-                   class="border border-slate-600 rounded-md p-2 text-sm bg-slate-800/50 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none" />
-            <select id="roleFilter" 
-                    class="border border-slate-600 rounded-md p-2 text-sm bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none">
+          <form method="get" class="flex items-center gap-2 text-sm">
+            <input type="text" name="search" placeholder="Search users..." value="{{ search_query }}" class="border border-slate-600 rounded-md p-2 text-sm bg-slate-800/50 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none" />
+            <select name="role" onchange="this.form.submit()" class="border border-slate-600 rounded-md p-2 text-sm bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none">
               <option value="">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="regular">Regular User</option>
+              <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Admin</option>
+              <option value="regular" {% if role_filter == 'regular' %}selected{% endif %}>Regular User</option>
             </select>
-          </div>
+            <select name="status" onchange="this.form.submit()" class="border border-slate-600 rounded-md p-2 text-sm bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none">
+              <option value="">All Status</option>
+              <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+              <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+            </select>
+            <button type="submit" class="border border-slate-600 rounded-md p-2 text-sm bg-blue-600/50 text-white hover:bg-blue-600 transition">Search</button>
+            {% if search_query or role_filter or status_filter %}
+            <a href="{% url 'admin_user_list' %}" class="border border-slate-600 rounded-md p-2 text-sm bg-slate-700/50 text-white hover:bg-slate-700 transition">Clear</a>
+            {% endif %}
+          </form>
         </div>
 
         <div class="overflow-x-auto">
@@ -84,10 +90,6 @@
                 </td>
                 <td class="p-3 text-right space-x-2">
                   <a href="{% url 'admin_CRUD_Users' %}?user_id={{ user.id }}" 
-                     class="inline-block border border-slate-600 px-3 py-1 rounded-md text-blue-400 hover:bg-blue-600/50 hover:border-blue-500 transition duration-150">
-                    <i class="fas fa-eye mr-1"></i>View
-                  </a>
-                  <a href="{% url 'admin_CRUD_Users' %}?user_id={{ user.id }}" 
                      class="inline-block border border-slate-600 px-3 py-1 rounded-md text-yellow-400 hover:bg-yellow-600/50 hover:border-yellow-500 transition duration-150">
                     <i class="fas fa-edit mr-1"></i>Edit
                   </a>
@@ -113,7 +115,7 @@
           </div>
           <div class="space-x-2">
             {% if users.has_previous %}
-            <a href="?page={{ users.previous_page_number }}" 
+            <a href="?page={{ users.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
                class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">
                <i class="fas fa-chevron-left mr-1"></i>Prev
             </a>
@@ -123,7 +125,7 @@
               {% if i == users.number %}
                 <span class="px-3 py-1 border border-blue-500 bg-blue-600/50 text-white rounded-md">{{ i }}</span>
               {% else %}
-                <a href="?page={{ i }}" 
+                <a href="?page={{ i }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
                    class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">
                    {{ i }}
                 </a>
@@ -131,7 +133,7 @@
             {% endfor %}
 
             {% if users.has_next %}
-            <a href="?page={{ users.next_page_number }}" 
+            <a href="?page={{ users.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
                class="px-3 py-1 border border-slate-600 rounded-md hover:bg-slate-700/50 transition duration-150">
                Next<i class="fas fa-chevron-right ml-1"></i>
             </a>
@@ -197,36 +199,6 @@
             closeDeleteModal();
           });
         }
-
-        // Search and Filter Functionality
-        const searchInput = document.getElementById('searchInput');
-        const roleFilter = document.getElementById('roleFilter');
-        let timeoutId;
-
-        function updateList() {
-          const searchQuery = searchInput.value.toLowerCase();
-          const roleQuery = roleFilter.value.toLowerCase();
-          const rows = document.querySelectorAll('tbody tr');
-
-          rows.forEach(row => {
-            const name = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
-            const email = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
-            const role = row.querySelector('td:nth-child(5)').textContent.toLowerCase();
-
-            const matchesSearch = name.includes(searchQuery) || email.includes(searchQuery);
-            const matchesRole = !roleQuery || role.includes(roleQuery);
-
-            row.style.display = matchesSearch && matchesRole ? '' : 'none';
-          });
-        }
-
-        // Debounce search input
-        searchInput.addEventListener('input', () => {
-          clearTimeout(timeoutId);
-          timeoutId = setTimeout(updateList, 300);
-        });
-
-        roleFilter.addEventListener('change', updateList);
 
         // CSRF Token
         function getCookie(name) {

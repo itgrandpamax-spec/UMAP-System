@@ -411,6 +411,7 @@ def _has_overlap(user, day, start, end):
 
 
 @login_required
+@login_required(login_url='login')
 def schedule_view(request):
     print("\n=== Schedule View Debug ===")
     print("Current user:", request.user.username)

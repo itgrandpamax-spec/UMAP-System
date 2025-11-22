@@ -65,6 +65,10 @@
                     <span class="px-2 py-1 rounded-full text-xs inline-block bg-orange-900/50 text-orange-300">
                       Rated Room
                     </span>
+                  {% elif entry.type == 'saved_location' %}
+                    <span class="px-2 py-1 rounded-full text-xs inline-block bg-green-900/50 text-green-300">
+                      Saved Location
+                    </span>
                   {% endif %}
                 </td>
                 <td class="p-3">
@@ -100,14 +104,27 @@
                       </div>
                       {% endif %}
                     </div>
+                  {% elif entry.type == 'saved_location' %}
+                    <div class="space-y-1 break-words">
+                      <div class="truncate">
+                        <span class="text-gray-400 font-medium">Room:</span> 
+                        <span class="text-gray-300">{{ entry.item.room.profile.name }}</span>
+                      </div>
+                      <div class="truncate">
+                        <span class="text-gray-400 font-medium">Building:</span> 
+                        <span class="text-gray-300">{{ entry.item.room.floor.building }}</span>
+                      </div>
+                    </div>
                   {% endif %}
                 </td>
                 <td class="p-3 whitespace-nowrap text-gray-400">
-                  <div title="{% if entry.type == 'activity' %}{{ entry.item.timestamp|date:'Y-m-d H:i:s' }}{% else %}{{ entry.item.creation_date|date:'Y-m-d H:i:s' }}{% endif %}">
+                  <div title="{% if entry.type == 'activity' %}{{ entry.item.timestamp|date:'Y-m-d H:i:s' }}{% elif entry.type == 'feedback' %}{{ entry.item.creation_date|date:'Y-m-d H:i:s' }}{% else %}{{ entry.item.saved_date|date:'Y-m-d H:i:s' }}{% endif %}">
                     {% if entry.type == 'activity' %}
                       {{ entry.item.timestamp|timesince }} ago
-                    {% else %}
+                    {% elif entry.type == 'feedback' %}
                       {{ entry.item.creation_date|timesince }} ago
+                    {% else %}
+                      {{ entry.item.saved_date|timesince }} ago
                     {% endif %}
                   </div>
                   {% if entry.type == 'activity' and entry.item.ip_address %}

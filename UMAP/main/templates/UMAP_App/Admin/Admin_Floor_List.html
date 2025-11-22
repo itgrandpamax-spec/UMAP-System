@@ -13,6 +13,64 @@
           </a>
       </header>
 
+      <!-- Statistics Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <!-- Total Buildings -->
+        <div class="bg-blue-900/50 backdrop-blur-sm rounded-lg p-4 border border-blue-700/30">
+          <div class="text-blue-300 text-sm font-medium mb-2">🏢 Total Buildings</div>
+          <div class="text-3xl font-bold text-white">{{ total_buildings }}</div>
+          <div class="text-xs text-blue-200 mt-2">Unique locations</div>
+        </div>
+
+        <!-- Total Floors -->
+        <div class="bg-purple-900/50 backdrop-blur-sm rounded-lg p-4 border border-purple-700/30">
+          <div class="text-purple-300 text-sm font-medium mb-2">📍 Total Floors</div>
+          <div class="text-3xl font-bold text-white">{{ total_floors }}</div>
+          <div class="text-xs text-purple-200 mt-2">Across all buildings</div>
+        </div>
+
+        <!-- Total Rooms -->
+        <div class="bg-green-900/50 backdrop-blur-sm rounded-lg p-4 border border-green-700/30">
+          <div class="text-green-300 text-sm font-medium mb-2">🚪 Total Rooms</div>
+          <div class="text-3xl font-bold text-white">{{ total_rooms }}</div>
+          <div class="text-xs text-green-200 mt-2">In all locations</div>
+        </div>
+
+        <!-- Average Rooms per Floor -->
+        <div class="bg-orange-900/50 backdrop-blur-sm rounded-lg p-4 border border-orange-700/30">
+          <div class="text-orange-300 text-sm font-medium mb-2">📊 Avg Rooms/Floor</div>
+          <div class="text-3xl font-bold text-white">{% if total_floors %}{{ total_rooms|add:0|floatformat:0 }}{% else %}0{% endif %}</div>
+          <div class="text-xs text-orange-200 mt-2">Per floor average</div>
+        </div>
+      </div>
+
+      <!-- Building Breakdown -->
+      {% if building_stats %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {% for building in building_stats %}
+        <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700/30 hover:border-slate-600/50 transition">
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <h3 class="text-white font-semibold">{{ building.name }}</h3>
+              <p class="text-xs text-gray-400 mt-1">{{ building.floors }} floor(s) • {{ building.rooms }} room(s)</p>
+            </div>
+            <div class="bg-indigo-600/20 px-2 py-1 rounded text-indigo-300 text-xs font-medium">{{ building.rooms }} rooms</div>
+          </div>
+          <div class="flex gap-2">
+            <div class="flex-1 text-center">
+              <div class="text-lg font-bold text-purple-300">{{ building.floors }}</div>
+              <div class="text-xs text-gray-400">Floors</div>
+            </div>
+            <div class="flex-1 text-center">
+              <div class="text-lg font-bold text-green-300">{{ building.rooms }}</div>
+              <div class="text-xs text-gray-400">Rooms</div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
       <!-- Map Table -->
       <div class="bg-slate-800/50 p-6 rounded-2xl shadow-sm backdrop-blur-sm">
         <div class="flex justify-between items-center mb-4">

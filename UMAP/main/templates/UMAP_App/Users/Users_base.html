@@ -141,7 +141,7 @@
   </style>
   {% block extra_css %}{% endblock %}
 </head>
-<body class="w-full bg-slate-900 {% block body_class %}{% endblock %}">
+<body class="w-full bg-slate-900 {% block body_class %}{% endblock %}" data-authenticated="{% if user.is_authenticated %}true{% else %}false{% endif %}">
   <!-- Floating Sidebar -->
   <aside id="sidebar" class="fixed left-4 top-4 bottom-4 w-64 bg-slate-800/80 backdrop-blur-xl border border-slate-700/30 rounded-2xl shadow-2xl transition-all duration-300 z-40 hidden md:flex md:flex-col hover:bg-slate-800/90 group">
     <!-- User Profile Section -->
@@ -182,13 +182,13 @@
           </a>
         </li>
         <li>
-          <a href="#" class="nav-link">
+          <a href="{% url 'saved_locations' %}" class="nav-link {% if request.resolver_match.url_name == 'saved_locations' %}active{% endif %}">
             <i class="fas fa-bookmark w-5 h-5 opacity-90 group-hover:opacity-100"></i>
             <span>Saved</span>
           </a>
         </li>
         <li>
-          <a href="#" class="nav-link">
+          <a href="{% url 'recent_locations' %}" class="nav-link {% if request.resolver_match.url_name == 'recent_locations' %}active{% endif %}">
             <i class="fas fa-clock w-5 h-5 opacity-90 group-hover:opacity-100"></i>
             <span>Recent</span>
           </a>
@@ -196,14 +196,7 @@
       </ul>
 
       <!-- Settings Section -->
-      <h2 class="text-sm font-medium text-slate-400/90 mt-8 mb-3 pl-2 uppercase tracking-wider group-hover:text-slate-400 transition-colors duration-300">Settings</h2>
-      <ul class="space-y-1">
-        <li>
-          <a href="#" class="nav-link">
-            <i class="fas fa-cog w-5 h-5 opacity-90 group-hover:opacity-100"></i>
-            <span>Preferences</span>
-          </a>
-        </li>
+      <ul class="space-y-1 mt-8">
         {% if user.is_authenticated %}
         <li>
           <a href="{% url 'user_profile' %}" class="nav-link {% if request.resolver_match.url_name == 'user_profile' %}active{% endif %}">
@@ -233,7 +226,6 @@
   </main>
 
   <!-- Mobile Bottom Navigation Bar -->
-  {% if user.is_authenticated %}
   <nav id="mobileNavbar" class="md:hidden fixed bottom-0 left-0 right-0 bg-gray-900 z-[9999]" style="position: fixed !important;">
     <!-- Drag Handle -->
     <div id="navDragHandle" class="w-12 h-1 mx-auto my-2 bg-gray-600 rounded-full cursor-grab active:cursor-grabbing touch-none"></div>
@@ -246,6 +238,15 @@
         <i class="fas fa-calendar text-xl mb-1"></i>
         <span class="text-xs">Schedule</span>
       </a>
+      <a href="{% url 'saved_locations' %}" class="flex-1 flex flex-col items-center py-2 text-gray-400 {% if request.resolver_match.url_name == 'saved_locations' %}text-blue-500{% endif %}">
+        <i class="fas fa-bookmark text-xl mb-1"></i>
+        <span class="text-xs">Saved</span>
+      </a>
+      <a href="{% url 'recent_locations' %}" class="flex-1 flex flex-col items-center py-2 text-gray-400 {% if request.resolver_match.url_name == 'recent_locations' %}text-blue-500{% endif %}">
+        <i class="fas fa-clock text-xl mb-1"></i>
+        <span class="text-xs">Recent</span>
+      </a>
+      {% if user.is_authenticated %}
       <a href="{% url 'user_profile' %}" class="flex-1 flex flex-col items-center py-2 text-gray-400 {% if request.resolver_match.url_name == 'user_profile' %}text-blue-500{% endif %}">
         <i class="fas fa-user text-xl mb-1"></i>
         <span class="text-xs">Profile</span>
@@ -254,11 +255,14 @@
         <i class="fas fa-sign-out-alt text-xl mb-1"></i>
         <span class="text-xs">Logout</span>
       </a>
+      {% endif %}
     </div>
   </nav>
   
   <!-- Profile Section (below navbar, revealed when dragged) -->
-  <div id="profileSection" class="md:hidden fixed bottom-0 left-0 right-0 bg-gray-900 z-[9998] px-4 py-8 flex flex-col items-center justify-center" style="height: 200px; transform: translateY(200px);">
+  <div id="profileSection" class="md:hidden fixed bottom-0 left-0 right-0 bg-gray-900 z-[9998] px-4 py-8 flex flex-col items-center justify-center" style="height: 250px; transform: translateY(250px);">
+    {% if user.is_authenticated %}
+    <!-- Authenticated User Profile -->
     <div class="flex flex-col items-center space-y-3">
       <div class="w-16 h-16 rounded-full border-2 border-blue-500/30 overflow-hidden">
         {% if user.profile.profile_pic %}
@@ -270,9 +274,22 @@
         {% endif %}
       </div>
       <h2 class="text-lg font-medium text-white/90">{{ user.get_full_name|default:user.username }}</h2>
+      <p class="text-sm text-slate-400">{{ user.email }}</p>
     </div>
+    {% else %}
+    <!-- Guest User Section -->
+    <div class="flex flex-col items-center space-y-4 w-full">
+      <div class="flex flex-col items-center space-y-2">
+        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-500/20 to-yellow-500/20 border-2 border-orange-500/50 flex items-center justify-center">
+          <i class="fas fa-user-slash text-orange-400 text-2xl"></i>
+        </div>
+        <h2 class="text-lg font-medium text-white/90">Guest User</h2>
+        <p class="text-xs text-slate-400 text-center max-w-xs">You're browsing as a guest. Some features are limited.</p>
+      </div>
+      <p class="text-xs text-slate-500 text-center">Login to access saved locations, schedule, and profile features</p>
+    </div>
+    {% endif %}
   </div>
-  {% endif %}
 
   <!-- Notification Container -->
   <div id="notificationContainer" class="fixed top-4 right-4 z-50 flex flex-col items-end space-y-2"></div>
@@ -345,6 +362,7 @@
         let startY = 0;
         let startTransform = 0;
         let isDragging = false;
+        const profileSectionHeight = 250; // Updated to match new profile section height
 
         function handleTouchStart(e) {
           isDragging = true;
@@ -359,12 +377,12 @@
           
           const currentY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
           const deltaY = currentY - startY;
-          const newTransform = Math.min(Math.max(startTransform + deltaY, -200), 0); // Limit drag range
+          const newTransform = Math.min(Math.max(startTransform + deltaY, -profileSectionHeight), 0); // Limit drag range
           
           navbar.style.transform = `translateY(${newTransform}px)`;
           
           // Move profile section along with navbar
-          const profileTransform = 200 + newTransform; // Profile starts at 200px below
+          const profileTransform = profileSectionHeight + newTransform; // Profile starts at profileSectionHeight below
           profileSection.style.transform = `translateY(${profileTransform}px)`;
         }
 
@@ -377,12 +395,12 @@
           const currentTransform = parseFloat(navbar.style.transform?.replace('translateY(', '').replace('px)', '') || 0);
           
           // Snap to positions
-          if (currentTransform < -100) {
-            navbar.style.transform = 'translateY(-200px)'; // Hide most of navbar
+          if (currentTransform < -profileSectionHeight / 2) {
+            navbar.style.transform = `translateY(-${profileSectionHeight}px)`; // Hide most of navbar
             profileSection.style.transform = 'translateY(0px)'; // Show profile section
           } else {
             navbar.style.transform = 'translateY(0)'; // Show full navbar
-            profileSection.style.transform = 'translateY(200px)'; // Hide profile section
+            profileSection.style.transform = `translateY(${profileSectionHeight}px)`; // Hide profile section
           }
         }
 
