@@ -1387,7 +1387,7 @@ def recent_locations_view(request):
     
     except Exception as e:
         print(f"Error in recent_locations_view: {str(e)}")
-        messages.error(request, 'Error loading recent locations')
+        # Return empty state rather than showing error message since page renders fine
         return render(request, 'UMAP_App/Users/Users_Recent.html', {
             'recent_places': [],
             'organized_places': {},

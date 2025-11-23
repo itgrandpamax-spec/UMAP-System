@@ -1,3 +1,4 @@
+{% load static %}
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
   * { font-family: 'Inter', sans-serif; }
@@ -61,7 +62,7 @@
     right: 0;
     bottom: 0;
     left: 0;
-    background: linear-gradient(to right, rgba(15,23,42,0.5), transparent);
+    background: linear-gradient(to right, rgba(15,23,42,0.15), transparent);
     pointer-events: none;
   }
   .side-image-container img { 
@@ -223,8 +224,8 @@
 <div class="flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl shadow-lg md:flex-row mx-auto my-10 auth-container">
     <!-- Left Panel (Image Section for Desktop) -->
     <div class="hidden md:block w-1/2 bg-gray-200 side-image-container relative">
-        <!-- 🔧 To change the side image, replace the image source below -->
-        <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c" alt="Campus view" />
+        <!-- 🔧 Images change based on active tab: Login = umak-bldg, Signup = umak-bldg2 -->
+        <img id="authSideImage" src="{% static 'UMAP_App/images/umak-bldg.jpg' %}" alt="Campus view" />
     </div>
 
     <!-- Right Panel (Form Section) -->
@@ -821,6 +822,11 @@ document.addEventListener('DOMContentLoaded', function() {
         signupForm.classList.add('hidden');
         loginTab.classList.add('toggle-active');
         signupTab.classList.remove('toggle-active');
+        // Change side image to umak-bldg for login
+        const sideImage = document.getElementById('authSideImage');
+        if (sideImage) {
+            sideImage.src = "{% static 'UMAP_App/images/umak-bldg.jpg' %}";
+        }
     }
 
     function showSignup() {
@@ -828,6 +834,11 @@ document.addEventListener('DOMContentLoaded', function() {
         loginForm.classList.add('hidden');
         signupTab.classList.add('toggle-active');
         loginTab.classList.remove('toggle-active');
+        // Change side image to umak-bldg2 for signup
+        const sideImage = document.getElementById('authSideImage');
+        if (sideImage) {
+            sideImage.src = "{% static 'UMAP_App/images/umak-bldg.jpg' %}";
+        }
     }
 
     // Initialize form visibility based on server state

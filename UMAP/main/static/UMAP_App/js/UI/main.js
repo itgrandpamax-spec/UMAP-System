@@ -215,182 +215,17 @@ function getCookie(name) {
 }
 
 // SVG Map Event Handlers
-function initializeSVGMap(svg, isMobileView) {
-    if (!svg || !svg.contentDocument) {
-        console.warn('SVG not available yet, retrying in 500ms...');
-        setTimeout(() => initializeSVGMap(svg, isMobileView), 500);
-        return false;
-    }
-    
-    const svgDoc = svg.contentDocument;
-    const svgElement = svgDoc.querySelector('svg');
-    
-    if (!svgElement) {
-        console.warn('SVG element not found, retrying in 500ms...');
-        setTimeout(() => initializeSVGMap(svg, isMobileView), 500);
-        return false;
-    }
-    
-    // Make SVG responsive
-    svgElement.style.width = '100%';
-    svgElement.style.height = '100%';
-    svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-
-    // Find all building elements with various possible ID patterns
-    const buildings = Array.from(svgDoc.querySelectorAll('path[id], polygon[id], g[id]')).filter(el => {
-        const id = el.id.toLowerCase();
-        return id.includes('building') || 
-               id.includes('bldg') || 
-               id === 'hpsb' || 
-               id === 'admin' || 
-               id === 'oval' || 
-               id.match(/^building\d+$/);
-    });
-    
-    // Log found buildings for debugging
-    console.log('Found buildings:', buildings.map(b => b.id));
-    console.log('Total buildings found:', buildings.length);
-    
-    // Initialize building data
-    fetchBuildingData();
-    
-    buildings.forEach(building => {
-        // Set up building interactions
-        const defaultStyle = window.getComputedStyle(building);
-        const defaultFill = defaultStyle.fill;
-        
-        // Make building interactive
-        building.style.cursor = 'pointer';
-        building.style.transition = 'all 0.3s ease';
-        
-        // Store original fill color
-        building.dataset.originalFill = defaultFill;
-        
-        const highlight = () => {
-            if (!building.classList.contains('selected')) {
-                building.style.fill = 'rgba(59, 130, 246, 0.5)';
-                building.style.filter = 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.5))';
-            }
-        };
-        
-        const unhighlight = () => {
-            if (!building.classList.contains('selected')) {
-                building.style.fill = building.dataset.originalFill;
-                building.style.filter = '';
-            }
-        };
-
-        // Handle both mouse and touch events
-        building.addEventListener('mouseenter', highlight);
-        building.addEventListener('mouseleave', unhighlight);
-        building.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            highlight();
-        });
-        
-        const handleBuildingSelect = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            console.log('Building clicked:', building.id);
-            
-            // Reset previous selections
-            buildings.forEach(b => {
-                b.classList.remove('selected');
-                b.style.fill = b.dataset.originalFill || '';
-                b.style.filter = '';
-            });
-            
-            // Set this building as selected
-            building.classList.add('selected');
-            building.style.fill = 'rgba(255, 152, 0, 0.7)';
-            building.style.filter = 'drop-shadow(0 0 12px rgba(255, 152, 0, 0.5))';
-            
-            // Calculate panel position for non-mobile
-            let position = null;
-            if (window.innerWidth > 768) {
-                const rect = building.getBoundingClientRect();
-                position = {
-                    x: rect.left + (rect.width / 2),
-                    y: rect.top + (rect.height / 2)
-                };
-            }
-            
-            // Show building info panel
-            const buildingName = building.id.toLowerCase();
-            const displayName = buildingName
-                .replace(/^(building|bldg)/, 'Building ')
-                .replace(/^hpsb$/, 'HPSB')
-                .replace(/^admin$/, 'ADMIN')
-                .replace(/^oval$/, 'Oval');
-                
-            showBuildingPanel({
-                id: building.id,
-                name: displayName,
-                position: position
-            });
-        };
-
-        building.addEventListener('click', handleBuildingSelect);
-        building.addEventListener('touchend', handleBuildingSelect);
-    });
-
-    // Enable panning
-    let isDragging = false;
-    let startX, startY;
-    let translateX = 0, translateY = 0;
-    
-    const handleDragStart = (e) => {
-        isDragging = true;
-        startX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
-        startY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
-        svgElement.style.cursor = 'grabbing';
-    };
-
-    const handleDragMove = (e) => {
-        if (!isDragging) return;
-        
-        e.preventDefault();
-        const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
-        const clientY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
-        
-        const dx = clientX - startX;
-        const dy = clientY - startY;
-        
-        translateX += dx;
-        translateY += dy;
-        
-        svgElement.style.transform = `translate(${translateX}px, ${translateY}px)`;
-        
-        startX = clientX;
-        startY = clientY;
-    };
-
-    const handleDragEnd = () => {
-        isDragging = false;
-        svgElement.style.cursor = 'grab';
-    };
-
-    // Add pan event listeners to SVG
-    const isMobile = window.innerWidth < 768;
-    if (!isMobile) {
-        svgElement.addEventListener('mousedown', handleDragStart);
-        window.addEventListener('mousemove', handleDragMove);
-        window.addEventListener('mouseup', handleDragEnd);
-    }
-    svgElement.addEventListener('touchstart', handleDragStart);
-    window.addEventListener('touchmove', handleDragMove);
-    window.addEventListener('touchend', handleDragEnd);
-    
-    return true;
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     // Get the appropriate SVG based on screen size
     const isMobileView = window.innerWidth < 768;
     const svg = document.getElementById(isMobileView ? 'umapSVG-mobile' : 'umapSVG');
     const fogOverlay = document.getElementById('fogOverlay');
     const zoomBtn = document.getElementById('zoomBtn');
+    
+    if (!svg) {
+        console.error('SVG element not found');
+        return;
+    }
     
     // Prevent pull to refresh on mobile
     document.body.addEventListener('touchmove', function(e) {
@@ -422,22 +257,227 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: false });
     });
     
-    // Try to initialize SVG immediately, then set up load event as fallback
-    if (!initializeSVGMap(svg, isMobileView)) {
-        // If SVG not ready, wait for load event
-        svg.addEventListener('load', () => {
-            initializeSVGMap(svg, isMobileView);
-        });
-    }
-});
+    // Function to initialize SVG interactivity
+    const initializeSVG = () => {
+        try {
+            const svgDoc = svg.contentDocument;
+            if (!svgDoc) {
+                console.warn('SVG document not accessible yet');
+                return false;
+            }
+            
+            const svgElement = svgDoc.querySelector('svg');
+            if (!svgElement) {
+                console.warn('SVG element not found in document');
+                return false;
+            }
+        
+            // Make SVG responsive
+            svgElement.style.width = '100%';
+            svgElement.style.height = '100%';
+            svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
 
-// Fallback: Re-initialize SVG if window is resized to ensure consistency
-window.addEventListener('resize', () => {
-    const isMobileView = window.innerWidth < 768;
-    const svg = document.getElementById(isMobileView ? 'umapSVG-mobile' : 'umapSVG');
-    if (svg && svg.contentDocument) {
-        console.log('Reinitializing SVG after window resize');
-        initializeSVGMap(svg, isMobileView);
+            // Find all building elements with various possible ID patterns
+            const buildings = Array.from(svgDoc.querySelectorAll('path[id], polygon[id], g[id]')).filter(el => {
+                const id = el.id.toLowerCase();
+                return id.includes('building') || 
+                       id.includes('bldg') || 
+                       id === 'hpsb' || 
+                       id === 'admin' || 
+                       id === 'oval' || 
+                       id.match(/^building\d+$/);
+            });
+            
+            // Log found buildings for debugging
+            console.log('Found buildings:', buildings.map(b => b.id));
+            
+            // Initialize building data
+            fetchBuildingData();
+            
+            console.log('Total buildings found:', buildings.length);
+            console.log('Building elements:', buildings);
+            
+            buildings.forEach(building => {
+                // Set up building interactions
+                const defaultStyle = window.getComputedStyle(building);
+                const defaultFill = defaultStyle.fill;
+                
+                // Make building interactive
+                building.style.cursor = 'pointer';
+                building.style.transition = 'all 0.3s ease';
+                
+                // Store original fill color
+                building.dataset.originalFill = defaultFill;
+                
+                const highlight = () => {
+                    if (!building.classList.contains('selected')) {
+                        building.style.fill = 'rgba(59, 130, 246, 0.5)';
+                        building.style.filter = 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.5))';
+                    }
+                };
+                
+                const unhighlight = () => {
+                    if (!building.classList.contains('selected')) {
+                        building.style.fill = building.dataset.originalFill;
+                        building.style.filter = '';
+                    }
+                };
+
+                // Handle both mouse and touch events
+                building.addEventListener('mouseenter', highlight);
+                building.addEventListener('mouseleave', unhighlight);
+                building.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    highlight();
+                });
+                
+                const handleBuildingSelect = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('Building clicked:', building.id);
+                    
+                    // Reset previous selections
+                    buildings.forEach(b => {
+                        b.classList.remove('selected');
+                        b.style.fill = b.dataset.originalFill || '';
+                        b.style.filter = '';
+                    });
+                    
+                    // Set this building as selected
+                    building.classList.add('selected');
+                    building.style.fill = 'rgba(255, 152, 0, 0.7)';
+                    building.style.filter = 'drop-shadow(0 0 12px rgba(255, 152, 0, 0.5))';
+                    
+                    // Calculate panel position for non-mobile
+                    let position = null;
+                    if (window.innerWidth > 768) {
+                        const rect = building.getBoundingClientRect();
+                        position = {
+                            x: rect.left + (rect.width / 2),
+                            y: rect.top + (rect.height / 2)
+                        };
+                    }
+                    
+                    // Show building info panel
+                    const buildingName = building.id.toLowerCase();
+                    const displayName = buildingName
+                        .replace(/^(building|bldg)/, 'Building ')
+                        .replace(/^hpsb$/, 'HPSB')
+                        .replace(/^admin$/, 'ADMIN')
+                        .replace(/^oval$/, 'Oval');
+                        
+                    showBuildingPanel({
+                        id: building.id,
+                        name: displayName,
+                        position: position
+                    });
+                };
+
+                building.addEventListener('click', handleBuildingSelect);
+                building.addEventListener('touchend', handleBuildingSelect);
+            });
+
+            // Enable panning with drag threshold to avoid interfering with clicks
+            let isDragging = false;
+            let startX, startY;
+            let translateX = 0, translateY = 0;
+            const dragThreshold = 5; // pixels
+            let dragDistance = 0;
+            let isClickingBuilding = false;
+            
+            const handleDragStart = (e) => {
+                // Check if click is on a building or its children
+                let target = e.target;
+                isClickingBuilding = false;
+                
+                // Walk up the DOM tree to check if we're inside a building element
+                while (target && target !== svgElement) {
+                    if (target.id && buildings.some(b => b === target)) {
+                        isClickingBuilding = true;
+                        break;
+                    }
+                    target = target.parentElement;
+                }
+                
+                // Don't start drag if clicking on a building
+                if (isClickingBuilding) {
+                    return;
+                }
+                
+                startX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
+                startY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
+                dragDistance = 0;
+                isDragging = true;
+            };
+
+            const handleDragMove = (e) => {
+                if (!isDragging || isClickingBuilding) return;
+                
+                const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
+                const clientY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
+                
+                const dx = clientX - startX;
+                const dy = clientY - startY;
+                
+                dragDistance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Only apply drag if movement exceeds threshold
+                if (dragDistance > dragThreshold) {
+                    e.preventDefault();
+                    svgElement.style.cursor = 'grabbing';
+                    
+                    translateX += dx;
+                    translateY += dy;
+                    
+                    svgElement.style.transform = `translate(${translateX}px, ${translateY}px)`;
+                    
+                    startX = clientX;
+                    startY = clientY;
+                }
+            };
+
+            const handleDragEnd = () => {
+                isDragging = false;
+                isClickingBuilding = false;
+                svgElement.style.cursor = 'grab';
+                dragDistance = 0;
+            };
+
+            // Add pan event listeners to SVG
+            if (!isMobileView) {
+                svgElement.addEventListener('mousedown', handleDragStart);
+                window.addEventListener('mousemove', handleDragMove);
+                window.addEventListener('mouseup', handleDragEnd);
+            }
+            svgElement.addEventListener('touchstart', handleDragStart);
+            window.addEventListener('touchmove', handleDragMove);
+            window.addEventListener('touchend', handleDragEnd);
+            
+            return true;
+        } catch (error) {
+            console.error('Error initializing SVG:', error);
+            return false;
+        }
+    };
+    
+    // Try to initialize immediately
+    if (!initializeSVG()) {
+        // If not ready, attach load event listener
+        svg.addEventListener('load', () => {
+            console.log('SVG load event fired, initializing...');
+            initializeSVG();
+        });
+        
+        // Also try again after a short delay as fallback
+        setTimeout(() => {
+            if (!initializeSVG()) {
+                console.warn('SVG still not ready after timeout, will try again');
+                setTimeout(initializeSVG, 1000);
+            }
+        }, 500);
+    } else {
+        console.log('SVG initialized immediately');
     }
 });
 
