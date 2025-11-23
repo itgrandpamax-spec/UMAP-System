@@ -369,51 +369,9 @@ document.addEventListener('DOMContentLoaded', () => {
             building.addEventListener('touchend', handleBuildingSelect);
         });
 
-        // Enable panning
-        let isDragging = false;
-        let startX, startY;
-        let translateX = 0, translateY = 0;
-        
-        const handleDragStart = (e) => {
-            isDragging = true;
-            startX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
-            startY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
-            svgElement.style.cursor = 'grabbing';
-        };
-
-        const handleDragMove = (e) => {
-            if (!isDragging) return;
-            
-            e.preventDefault();
-            const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
-            const clientY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
-            
-            const dx = clientX - startX;
-            const dy = clientY - startY;
-            
-            translateX += dx;
-            translateY += dy;
-            
-            svgElement.style.transform = `translate(${translateX}px, ${translateY}px)`;
-            
-            startX = clientX;
-            startY = clientY;
-        };
-
-        const handleDragEnd = () => {
-            isDragging = false;
-            svgElement.style.cursor = 'grab';
-        };
-
-        // Add pan event listeners to SVG
-        if (!isMobile) {
-            svgElement.addEventListener('mousedown', handleDragStart);
-            window.addEventListener('mousemove', handleDragMove);
-            window.addEventListener('mouseup', handleDragEnd);
-        }
-        svgElement.addEventListener('touchstart', handleDragStart);
-        window.addEventListener('touchmove', handleDragMove);
-        window.addEventListener('touchend', handleDragEnd);
+        // Enable panning with drag threshold to avoid interfering with clicks
+        // Dragging functionality is disabled for SVG
+        // Users can still interact with buildings and other elements normally
     });
 
     // All initialization is done within this load handler

@@ -379,80 +379,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // Enable panning with drag threshold to avoid interfering with clicks
-            let isDragging = false;
-            let startX, startY;
-            let translateX = 0, translateY = 0;
-            const dragThreshold = 5; // pixels
-            let dragDistance = 0;
-            let isClickingBuilding = false;
-            
-            const handleDragStart = (e) => {
-                // Check if click is on a building or its children
-                let target = e.target;
-                isClickingBuilding = false;
-                
-                // Walk up the DOM tree to check if we're inside a building element
-                while (target && target !== svgElement) {
-                    if (target.id && buildings.some(b => b === target)) {
-                        isClickingBuilding = true;
-                        break;
-                    }
-                    target = target.parentElement;
-                }
-                
-                // Don't start drag if clicking on a building
-                if (isClickingBuilding) {
-                    return;
-                }
-                
-                startX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
-                startY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
-                dragDistance = 0;
-                isDragging = true;
-            };
-
-            const handleDragMove = (e) => {
-                if (!isDragging || isClickingBuilding) return;
-                
-                const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
-                const clientY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
-                
-                const dx = clientX - startX;
-                const dy = clientY - startY;
-                
-                dragDistance = Math.sqrt(dx * dx + dy * dy);
-                
-                // Only apply drag if movement exceeds threshold
-                if (dragDistance > dragThreshold) {
-                    e.preventDefault();
-                    svgElement.style.cursor = 'grabbing';
-                    
-                    translateX += dx;
-                    translateY += dy;
-                    
-                    svgElement.style.transform = `translate(${translateX}px, ${translateY}px)`;
-                    
-                    startX = clientX;
-                    startY = clientY;
-                }
-            };
-
-            const handleDragEnd = () => {
-                isDragging = false;
-                isClickingBuilding = false;
-                svgElement.style.cursor = 'grab';
-                dragDistance = 0;
-            };
-
-            // Add pan event listeners to SVG
-            if (!isMobileView) {
-                svgElement.addEventListener('mousedown', handleDragStart);
-                window.addEventListener('mousemove', handleDragMove);
-                window.addEventListener('mouseup', handleDragEnd);
-            }
-            svgElement.addEventListener('touchstart', handleDragStart);
-            window.addEventListener('touchmove', handleDragMove);
-            window.addEventListener('touchend', handleDragEnd);
+            // Dragging functionality is disabled for SVG
+            // Users can still interact with buildings and other elements normally
             
             return true;
         } catch (error) {
