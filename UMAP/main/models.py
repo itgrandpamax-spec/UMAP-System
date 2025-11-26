@@ -54,6 +54,7 @@ class Floor(models.Model):
     building = models.CharField(max_length=100)
     model_file = models.FileField(upload_to='floors/models/', null=True, blank=True)
     csv_file = models.FileField(upload_to='floors/csv/', null=True, blank=True)
+    floorplan_svg = models.FileField(upload_to='floors/floorplans/', null=True, blank=True)
     creation_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -69,6 +70,12 @@ class Floor(models.Model):
     def csv_url(self):
         if self.csv_file:
             return self.csv_file.url
+        return None
+    
+    @property
+    def floorplan_url(self):
+        if self.floorplan_svg:
+            return self.floorplan_svg.url
         return None
 
 

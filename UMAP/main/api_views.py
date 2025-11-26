@@ -1,14 +1,15 @@
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from .models import Floor, Room, RoomProfile, SavedLocation, UserActivity
+from .views import extract_floor_number
 
 
 def get_building_data(request):
     """API endpoint to get building data for the interactive SVG map"""
     try:
-        # Get unique buildings and their floors
+        # Get unique buildings and their floors, sorted by floor number
         buildings_data = {}
-        floors = Floor.objects.all()
+        floors = sorted(Floor.objects.all(), key=lambda f: (f.building, extract_floor_number(f.name)))
         
         for floor in floors:
             if floor.building not in buildings_data:
@@ -27,16 +28,22 @@ def get_building_data(request):
             # Add rooms for this floor
             rooms = Room.objects.filter(floor=floor).select_related('profile')
             for room in rooms:
-                if hasattr(room, 'profile'):
-                    room_data = {
-                        'id': room.id,
-                        'number': room.profile.number,
-                        'name': room.profile.name,
-                        'type': room.profile.type,
-                        'coordinates': room.profile.coordinates,
-                        'floor': floor.name
-                    }
-                    buildings_data[floor.building]['rooms'].append(room_data)
+                try:
+                    if hasattr(room, 'profile') and room.profile:
+                        room_data = {
+                            'id': room.id,
+                            'number': room.profile.number,
+                            'name': room.profile.name,
+                            'type': room.profile.type,
+                            'description': room.profile.description or '',
+                            'coordinates': room.profile.coordinates or {},
+                            'floor': floor.name
+                        }
+                        buildings_data[floor.building]['rooms'].append(room_data)
+                except Exception as room_error:
+                    # Log room parsing errors but continue
+                    print(f"Error processing room {room.id}: {str(room_error)}")
+                    continue
         
         return JsonResponse({
             'status': 'success',
@@ -44,6 +51,9 @@ def get_building_data(request):
         })
         
     except Exception as e:
+        import traceback
+        print(f"Error in get_building_data: {str(e)}")
+        print(traceback.format_exc())
         return JsonResponse({
             'status': 'error',
             'message': str(e)

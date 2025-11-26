@@ -1,0 +1,230 @@
+Room Id,Room Number,Room Name,Level,,Room Id,Room Number,Room Name,Level
+121801,121801,HPSB Entrance,Ground Floor,,10101,101,Right Elevator,1 Floor HPSB
+121804,121804,Bldg 1 Entrance,Ground Floor,,10102,102,Left Elevator,1 Floor HPSB
+121805,121805,Bldg 2 Entrance,Ground Floor,,10201,201,Left Elevator,2 Floor HPSB
+121806,121806,Bldg 3 Entrance,Ground Floor,,10202,202,Right Elevator,2 Floor HPSB
+121807,121807,Walkway,Ground Floor,,10301,301,Left Elevator,3 Floor HPSB
+121815,121815,Soccer Field,Ground Floor,,10302,302,Right Elevator,3 Floor HPSB
+121816,121816,Oval,Ground Floor,,10401,401,Left Elevator,4 Floor HPSB
+,,,,,10402,402,Right Elevator,4 Floor HPSB
+1,1,Fire Exit,1 Floor HPSB,,10501,501,Faculty Offfice ,5 Floor HPSB
+2,2,Fire Exit,1 Floor HPSB,,10502,502,Library,5 Floor HPSB
+3,3,Fire Exit,2 Floor HPSB,,10503,503,Admin Office,5 Floor HPSB
+4,4,Fire Exit,2 Floor HPSB,,10504,504,Classroom,5 Floor HPSB
+5,5,Fire Exit,5 Floor HPSB,,10505,505,Classroom,5 Floor HPSB
+5,5,Fire Exit,3 Floor HPSB,,10506,506,Classroom,5 Floor HPSB
+6,6,Fire Exit,6 Floor HPSB,,10507,507,Multi Media Room,5 Floor HPSB
+6,6,Fire Exit,3 Floor HPSB,,10508,508,Classroom,5 Floor HPSB
+7,7,Fire Exit,7 Floor HPSB,,10509,509,Classroom,5 Floor HPSB
+7,7,Fire Exit,4 Floor HPSB,,10510,510,Classroom,5 Floor HPSB
+8,8,Fire Exit,4 Floor HPSB,,10511,511,Classroom,5 Floor HPSB
+9,9,Fire Exit,5 Floor HPSB,,10512,512,Classroom,5 Floor HPSB
+10,10,Fire Exit,5 Floor HPSB,,10513,513,Male Cr Right,5 Floor HPSB
+11,11,Fire Exit,6 Floor HPSB,,10514,514,Female Cr Right,5 Floor HPSB
+12,12,Fire Exit,6 Floor HPSB,,10515,515,Storage,5 Floor HPSB
+13,13,Fire Exit,7 Floor HPSB,,10516,516,Left Elevator,5 Floor HPSB
+14,14,Fire Exit,7 Floor HPSB,,10517,517,Right Elevator,5 Floor HPSB
+15,15,Fire Exit,8 Floor HPSB,,10518,518,Elec Room,5 Floor HPSB
+16,16,Fire Exit,8 Floor HPSB,,10519,519,Female Cr Left,5 Floor HPSB
+17,17,Fire Exit,9 Floor HPSB,,10520,520,Male Cr Left,5 Floor HPSB
+18,18,Fire Exit,9 Floor HPSB,,10521,521,Janitors Closet,5 Floor HPSB
+19,19,Fire Exit,10 Floor HPSB,,,,,
+20,20,Fire Exit,10 Floor HPSB,,10601,601,Classroom,6 Floor HPSB
+21,21,Fire Exit,11 Floor HPSB,,10602,602,Classroom,6 Floor HPSB
+22,22,Fire Exit,11 Floor HPSB,,10603,603,Classroom,6 Floor HPSB
+23,23,Fire Exit,12 Floor HPSB,,10604,604,Com Lab,6 Floor HPSB
+24,24,Fire Exit,12 Floor HPSB,,10605,605,Classroom,6 Floor HPSB
+,,,,,10606,606,Classroom,6 Floor HPSB
+10101,101,HPSB Entrance,1 Floor HPSB,,10607,607,Classroom,6 Floor HPSB
+10102,102,HPSB 1st Floor Parking Entrance,1 Floor HPSB,,10608,608,Classroom,6 Floor HPSB
+10201,201,HPSB 2nd Floor Parking Entrance,2 Floor HPSB,,10609,609,Classroom,6 Floor HPSB
+10301,301,HPSB 3rd Floor Parking Entrance,3 Floor HPSB,,10610,610,Classroom,6 Floor HPSB
+10401,401,HPSB 4th Floor Parking Entrance,4 Floor HPSB,,10611,611,Classroom,6 Floor HPSB
+,,,,,10612,612,Classroom,6 Floor HPSB
+22201,22201,Stairs,1 Floor HPSB,,10613,613,Classroom,6 Floor HPSB
+22202,22202,Stairs,2 Floor HPSB,,10614,614,Classroom,6 Floor HPSB
+22203,22203,Stairs,3 Floor HPSB,,10615,615,Skills Lab Right,6 Floor HPSB
+22204,22204,Stairs,4 Floor HPSB,,10616,617,Skills Lab Left,6 Floor HPSB
+22208,22208,Stairs,8 Floor HPSB,,10617,618,Female Cr Right,6 Floor HPSB
+22209,22209,Stairs,9 Floor HPSB,,10618,619,Male Cr Right,6 Floor HPSB
+22210,22210,Stairs,10 Floor HPSB,,10619,620,Janitors Closet,6 Floor HPSB
+22211,22211,Stairs,11 Floor HPSB,,10620,615,Skills Lab Left,6 Floor HPSB
+22212,22212,Stairs,12 Floor HPSB,,10621,621,Left Elevator,6 Floor HPSB
+,,,,,10622,622,Right Elevator,6 Floor HPSB
+100105,100105,Pwd Chair,5 Floor HPSB,,10623,623,Elec Room,6 Floor HPSB
+100106,100106,Pwd Chair,6 Floor HPSB,,10624,624,Janitors Closet,6 Floor HPSB
+100107,100107,Pwd Chair,7 Floor HPSB,,10625,625,Male Cr Left,6 Floor HPSB
+100108,100108,Pwd Chair,8 Floor HPSB,,10626,626,Female Cr Left,6 Floor HPSB
+100109,100109,Pwd Chair,9 Floor HPSB,,10627,627,Student Center,6 Floor HPSB
+100110,100110,Pwd Chair,10 Floor HPSB,,10628,628,Storage,6 Floor HPSB
+,,,,,10629,629,Storage,6 Floor HPSB
+,,,,,10630,617,Skills Lab Left,6 Floor HPSB
+,,,,,,,,
+,,,,,10701,701,Multi Media Room,7 Floor HPSB
+,,,,,10702,702,Classroom,7 Floor HPSB
+,,,,,10703,703,Classroom,7 Floor HPSB
+,,,,,10704,704,Classroom,7 Floor HPSB
+,,,,,10705,705,Classroom,7 Floor HPSB
+,,,,,10706,706,Classroom,7 Floor HPSB
+,,,,,10707,707,Classroom,7 Floor HPSB
+,,,,,10708,708,Lab Room,7 Floor HPSB
+,,,,,10709,709,Lab Room,7 Floor HPSB
+,,,,,10710,710,Skills Lab Left,7 Floor HPSB
+,,,,,10711,712,Skills Lab Right,7 Floor HPSB
+,,,,,10712,713,Female Cr Right,7 Floor HPSB
+,,,,,10713,714,Male Cr Right,7 Floor HPSB
+,,,,,10714,715,Janitors Closet,7 Floor HPSB
+,,,,,10715,710,Skills Lab Right,7 Floor HPSB
+,,,,,10716,712,Skills Lab Left,7 Floor HPSB
+,,,,,10717,716,Storage,7 Floor HPSB
+,,,,,10718,717,Elec Room,7 Floor HPSB
+,,,,,10719,718,Janitors Closet,7 Floor HPSB
+,,,,,10720,719,Female Cr Left,7 Floor HPSB
+,,,,,10721,720,Male Cr Left,7 Floor HPSB
+,,,,,10722,721,Leasable Space,7 Floor HPSB
+,,,,,10723,722,Sim Hos Halls,7 Floor HPSB
+,,,,,10724,723,Nurses Station,7 Floor HPSB
+,,,,,10725,724,Private Room,7 Floor HPSB
+,,,,,10726,725,Delivery Room,7 Floor HPSB
+,,,,,10727,726,Nursery,7 Floor HPSB
+,,,,,10728,727,Storage,7 Floor HPSB
+,,,,,10729,728,Autoclave,7 Floor HPSB
+,,,,,10730,729,Operation Room,7 Floor HPSB
+,,,,,10731,730,Emergency Room,7 Floor HPSB
+,,,,,10732,731,Isolation Room,7 Floor HPSB
+,,,,,10733,732,Rural Health Setting,7 Floor HPSB
+,,,,,10734,733,Ward,7 Floor HPSB
+,,,,,10735,734,ICU Room,7 Floor HPSB
+,,,,,10736,735,Right Elevator,7 Floor HPSB
+,,,,,10737,736,Left Elevator,7 Floor HPSB
+,,,,,,,,
+,,,,,10801,801,Classroom,8 Floor HPSB
+,,,,,10802,802,Classroom,8 Floor HPSB
+,,,,,10803,803,Classroom,8 Floor HPSB
+,,,,,10804,804,Classroom,8 Floor HPSB
+,,,,,10805,805,Classroom,8 Floor HPSB
+,,,,,10806,806,Com Lab,8 Floor HPSB
+,,,,,10807,807,Classroom,8 Floor HPSB
+,,,,,10808,808,Classroom,8 Floor HPSB
+,,,,,10809,809,Classroom,8 Floor HPSB
+,,,,,10810,810,Classroom,8 Floor HPSB
+,,,,,10811,811,Classroom,8 Floor HPSB
+,,,,,10812,812,Classroom,8 Floor HPSB
+,,,,,10813,813,Classroom,8 Floor HPSB
+,,,,,10814,814,Skills Lab Left,8 Floor HPSB
+,,,,,10815,817,Skills Lab Right,8 Floor HPSB
+,,,,,10816,817,Skills Lab Left,8 Floor HPSB
+,,,,,10817,818,Storage,8 Floor HPSB
+,,,,,10819,820,Female Cr Right,8 Floor HPSB
+,,,,,10820,821,Male Cr Right,8 Floor HPSB
+,,,,,10821,822,Janitors Closet,8 Floor HPSB
+,,,,,10822,814,Skills Lab Right,8 Floor HPSB
+,,,,,10823,823,Right Elevator,8 Floor HPSB
+,,,,,10824,824,Left Elevator,8 Floor HPSB
+,,,,,10825,824,Student Center,8 Floor HPSB
+,,,,,10826,824,Elec Room,8 Floor HPSB
+,,,,,10827,824,Janitors Closet,8 Floor HPSB
+,,,,,10828,824,Female Cr Left,8 Floor HPSB
+,,,,,10829,824,Male Cr Left,8 Floor HPSB
+,,,,,10830,824,Storage,8 Floor HPSB
+,,,,,,,,
+,,,,,10901,901,Multi Media Room,9 Floor HPSB
+,,,,,10902,902,Zoology Room,9 Floor HPSB
+,,,,,10903,903,Zoology Room,9 Floor HPSB
+,,,,,10904,904,Central Lab,9 Floor HPSB
+,,,,,10905,905,Science Research Lab,9 Floor HPSB
+,,,,,10906,906,Physics Lab,9 Floor HPSB
+,,,,,10907,907,Physics Lab,9 Floor HPSB
+,,,,,10908,908,Microbiology Lab,9 Floor HPSB
+,,,,,10909,909,Chemistry Room,9 Floor HPSB
+,,,,,10910,910,Chemistry Room,9 Floor HPSB
+,,,,,10911,911,Orthopedic Room,9 Floor HPSB
+,,,,,10912,912,Autoclave,9 Floor HPSB
+,,,,,10913,913,Storage,9 Floor HPSB
+,,,,,10914,914,Formula Room,9 Floor HPSB
+,,,,,10915,915,Nursery,9 Floor HPSB
+,,,,,10916,916,Delivery Room,9 Floor HPSB
+,,,,,10917,917,Private Room,9 Floor HPSB
+,,,,,10918,918,Nurses Station,9 Floor HPSB
+,,,,,10919,919,Storage,9 Floor HPSB
+,,,,,10920,920,Emergency Room,9 Floor HPSB
+,,,,,10921,921,Isolation Room,9 Floor HPSB
+,,,,,10922,922,Rural Health Setting,9 Floor HPSB
+,,,,,10923,923,Rural Health Office,9 Floor HPSB
+,,,,,10924,924,Ward,9 Floor HPSB
+,,,,,10925,925,Sim Hos Halls,9 Floor HPSB
+,,,,,10926,926,Leasable Space,9 Floor HPSB
+,,,,,10927,927,Elec Room,9 Floor HPSB
+,,,,,10928,928,Janitors Closet,9 Floor HPSB
+,,,,,10929,929,Female Cr Left,9 Floor HPSB
+,,,,,10930,930,Male Cr Left,9 Floor HPSB
+,,,,,10931,931,Right Elevator,9 Floor HPSB
+,,,,,10932,932,Left Elevator,9 Floor HPSB
+,,,,,10934,934,Janitors Closet,9 Floor HPSB
+,,,,,10935,935,Female Cr Right,9 Floor HPSB
+,,,,,10936,936,Male Cr Right,9 Floor HPSB
+,,,,,,,,
+,,,,,101001,1001,Classroom,10 Floor HPSB
+,,,,,101002,1002,Classroom,10 Floor HPSB
+,,,,,101003,1003,Classroom,10 Floor HPSB
+,,,,,101004,1004,Classroom,10 Floor HPSB
+,,,,,101005,1005,Classroom,10 Floor HPSB
+,,,,,101006,1006,Com Lab,10 Floor HPSB
+,,,,,101007,1007,Classroom,10 Floor HPSB
+,,,,,101008,1008,Classroom,10 Floor HPSB
+,,,,,101009,1009,Classroom,10 Floor HPSB
+,,,,,101010,1010,Classroom,10 Floor HPSB
+,,,,,101011,1011,Classroom,10 Floor HPSB
+,,,,,101012,1012,Multi Media Room,10 Floor HPSB
+,,,,,101013,1013,Classroom,10 Floor HPSB
+,,,,,101014,1014,Classroom,10 Floor HPSB
+,,,,,101015,1015,Classroom,10 Floor HPSB
+,,,,,101016,1016,Classroom,10 Floor HPSB
+,,,,,101017,1017,Classroom,10 Floor HPSB
+,,,,,101018,1018,Storage,10 Floor HPSB
+,,,,,101019,1019,Student Center,10 Floor HPSB
+,,,,,101020,1020,Elec Room,10 Floor HPSB
+,,,,,101021,1021,Janitors Closet,10 Floor HPSB
+,,,,,101022,1022,Female Cr Left,10 Floor HPSB
+,,,,,101023,1023,Male Cr Left,10 Floor HPSB
+,,,,,101024,1024,Right Elevator,10 Floor HPSB
+,,,,,101025,1025,Left Elevator,10 Floor HPSB
+,,,,,101027,1027,Janitors Closet,10 Floor HPSB
+,,,,,101028,1028,Female Cr Right,10 Floor HPSB
+,,,,,101029,1029,Male Cr Right,10 Floor HPSB
+,,,,,101030,1030,Storage,10 Floor HPSB
+,,,,,,,,
+,,,,,101101,1101,Kitchen,11 Floor HPSB
+,,,,,101102,1102,Dining Area,11 Floor HPSB
+,,,,,101103,1103,HPSB Canteen Entrance,11 Floor HPSB
+,,,,,101104,1104,Multi Media Room,11 Floor HPSB
+,,,,,101105,1105,Elec Room,11 Floor HPSB
+,,,,,101106,1106,Janitors Closet,11 Floor HPSB
+,,,,,101107,1107,Female Cr Left,11 Floor HPSB
+,,,,,101108,1108,Male Cr Left,11 Floor HPSB
+,,,,,101109,1109,Aero Room,11 Floor HPSB
+,,,,,101110,1110,Gym Entrance,11 Floor HPSB
+,,,,,101111,1111,Reception Office,11 Floor HPSB
+,,,,,101112,1112,General Storage,11 Floor HPSB
+,,,,,101113,1113,Gym Back Entrance,11 Floor HPSB
+,,,,,101114,1114,Consultation Clinic,11 Floor HPSB
+,,,,,101115,1115,Male Gym Cr,11 Floor HPSB
+,,,,,101116,1116,Female Gym Cr,11 Floor HPSB
+,,,,,101117,1117,Equipment Storage,11 Floor HPSB
+,,,,,101118,1118,Dance Studio,11 Floor HPSB
+,,,,,101120,1120,Right Elevator,11 Floor HPSB
+,,,,,101121,1121,Left Elevator,11 Floor HPSB
+,,,,,,,,
+,,,,,101201,1201,Locker Shower,12 Floor HPSB
+,,,,,101202,1202,Locker Shower,12 Floor HPSB
+,,,,,101203,1203,PE Department Room,12 Floor HPSB
+,,,,,101204,1204,Basketball Court,12 Floor HPSB
+,,,,,101205,1205,Equipment Storage,12 Floor HPSB
+,,,,,101206,1206,Elevator Machine Room,12 Floor HPSB
+,,,,,101207,1207,Left Elevator,12 Floor HPSB
+,,,,,101208,1208,Volleyball Court,12 Floor HPSB
+,,,,,101209,1209,Elec Room,12 Floor HPSB
+,,,,,101210,1210,Janitors Closet,12 Floor HPSB
+,,,,,101211,1211,Female Cr,12 Floor HPSB
+,,,,,101212,1212,Male Cr,12 Floor HPSB
+,,,,,101213,1213,Equipment Storage,12 Floor HPSB

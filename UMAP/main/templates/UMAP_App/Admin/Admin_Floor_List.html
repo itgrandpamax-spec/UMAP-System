@@ -110,6 +110,13 @@
                      class="inline-block border border-slate-600 px-3 py-1 rounded-md bg-green-600/20 text-green-400 hover:bg-green-600/30">
                     <i class="fas fa-door-open mr-1"></i>View Rooms
                   </a>
+                  {% if floor.room_count == 0 %}
+                  <button onclick="createRoomsFromSVG({{ floor.id }}, '{{ floor.name }}')" 
+                          class="inline-block border border-slate-600 px-3 py-1 rounded-md bg-blue-600/20 text-blue-400 hover:bg-blue-600/30" 
+                          title="Create rooms from floor SVG file">
+                    <i class="fas fa-plus mr-1"></i>Create Rooms from SVG
+                  </button>
+                  {% endif %}
                   <a href="{% url 'admin_CRUD_Floors' %}?floor_id={{ floor.id }}" 
                      class="inline-block border border-slate-600 px-3 py-1 rounded-md bg-amber-600/20 text-amber-400 hover:bg-amber-600/30">
                     <i class="fas fa-edit mr-1"></i>Edit
@@ -439,6 +446,45 @@
                 }
             }
             return cookieValue;
+        }
+
+        // Create rooms from floor SVG
+        async function createRoomsFromSVG(floorId, floorName) {
+            if (!confirm(`Create rooms from SVG for "${floorName}"? This will extract rooms from the uploaded SVG file.`)) {
+                return;
+            }
+
+            const btn = event.target.closest('button');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Creating...';
+
+            try {
+                const response = await fetch(`/api/floor/${floorId}/create-rooms/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(`✅ Success!\n\nCreated ${data.created} room(s) from SVG.\n${data.skipped > 0 ? `${data.skipped} room(s) already existed.` : ''}`);
+                    // Reload page to show updated room count
+                    location.reload();
+                } else {
+                    alert(`❌ Error: ${data.message}`);
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`❌ Failed to create rooms: ${error.message}`);
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
         }
       </script>
 {% endblock %}

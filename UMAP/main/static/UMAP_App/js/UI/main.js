@@ -652,22 +652,29 @@ window.showFloorsPanel = function(buildingName) {
                         const roomsInFloor = buildingData.rooms.filter(r => r.floor === floor.name);
                         
                         const floorCard = document.createElement('div');
-                        floorCard.className = 'location-card group cursor-pointer';
+                        floorCard.className = 'location-card group';
                         floorCard.innerHTML = `
-                            <div class="flex justify-between items-start">
+                            <div class="flex justify-between items-start mb-3">
                                 <div class="flex-1">
-                                    <h3 class="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">
+                                    <h3 class="text-lg font-bold text-white">
                                         ${floor.name}
                                     </h3>
                                     <p class="text-sm text-slate-400">${roomsInFloor.length} rooms</p>
                                 </div>
-                                <i class="fas fa-chevron-right text-slate-500 group-hover:text-blue-400 transition-colors mt-1"></i>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="flex-1 px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-400 hover:text-purple-300 rounded text-sm transition-colors flex items-center justify-center gap-1">
+                                    <i class="fas fa-building"></i> Rooms
+                                </button>
                             </div>
                         `;
                         
-                        floorCard.addEventListener('click', (e) => {
+                        // Add event listener to rooms button
+                        const roomsBtn = floorCard.querySelector('button');
+                        
+                        roomsBtn.addEventListener('click', (e) => {
                             e.stopPropagation();
-                            showRoomsInFloor(foundKey, floor.name, roomsInFloor);
+                            showFloorPlanView(floor.id, floor.name, foundKey);
                         });
                         
                         locationCards.appendChild(floorCard);
@@ -761,6 +768,350 @@ window.showRoomsInFloor = function(buildingName, floorName, rooms) {
     locationCards.appendChild(backBtn);
     
     initializeLocationSearch();
+    sidebar.classList.add('show');
+}
+
+// Initialize interactivity for floor plan SVG rooms
+function initializeFloorPlanInteractivity(svgElement, floorId, buildingName, floorName) {
+    try {
+        console.log('Initializing floor plan interactivity...');
+        console.log('SVG Element:', svgElement);
+        
+        // Find all elements with room IDs (path and rect elements with numeric IDs)
+        // Includes: regular rooms (10XXXX), fire exits (1-24 numeric), elevators/stairs
+        const roomElements = Array.from(svgElement.querySelectorAll('[id^="109"], [id^="101"], [id^="102"], [id^="103"], rect[id], path[id]')).filter(el => {
+            const id = el.id;
+            // Filter for room IDs that match our pattern (e.g., 10520, 101001, etc. OR 1-24 for fire exits)
+            if (id && /^10[0-9]/.test(id) && id.length >= 4) {
+                return true;  // Regular room ID pattern
+            }
+            // Also include numeric IDs that are fire exits (1-24)
+            if (id && /^[0-9]+$/.test(id)) {
+                const num = parseInt(id);
+                return num >= 1 && num <= 24;  // Fire exit range
+            }
+            return false;
+        });
+        
+        console.log(`Found ${roomElements.length} room elements in floor plan`);
+        
+        // Map to store room numbers and their corresponding room data
+        const roomMap = {};
+        
+        // Fetch rooms data for this floor
+        fetch(`/api/floor/${floorId}/rooms/`)
+            .then(r => r.json())
+            .then(roomsData => {
+                if (roomsData.status === 'success' && roomsData.rooms) {
+                    console.log('Rooms data loaded:', roomsData.rooms.length, 'rooms');
+                    
+                    // Create a map of room numbers to room objects
+                    roomsData.rooms.forEach(room => {
+                        // Use the room number as key
+                        roomMap[room.number] = room;
+                        console.log(`Mapped room number: ${room.number} -> ${room.name}`);
+                    });
+                    
+                    console.log('Room map keys:', Object.keys(roomMap));
+                    
+                    // Add interactivity to each room element
+                    roomElements.forEach(element => {
+                        const elementId = element.id;
+                        console.log('Processing element ID:', elementId);
+                        
+                        // Extract room number from element ID
+                        // Remove any text after the number (e.g., "10912 Autoclave" -> "10912")
+                        const cleanId = elementId.split(/\s+/)[0]; // Get first part before space
+                        
+                        // Try different extraction patterns
+                        let matchingRoom = null;
+                        let extractedRoomNumber = null;
+                        
+                        // Pattern 1: Direct match in room map (full ID as room number)
+                        if (roomMap[cleanId]) {
+                            matchingRoom = roomMap[cleanId];
+                            extractedRoomNumber = cleanId;
+                            console.log(`Pattern 1 match: ${cleanId} -> ${matchingRoom.name}`);
+                        }
+                        
+                        // Pattern 2: Fire exit direct numeric match (1-24)
+                        if (!matchingRoom && /^[0-9]+$/.test(cleanId)) {
+                            const num = parseInt(cleanId);
+                            if (num >= 1 && num <= 24 && roomMap[cleanId]) {
+                                matchingRoom = roomMap[cleanId];
+                                extractedRoomNumber = cleanId;
+                                console.log(`Pattern 2 match (fire exit): ${cleanId} -> ${matchingRoom.name}`);
+                            }
+                        }
+                        
+                        // Pattern 3: Extract last 3 digits (for floors 1-9)
+                        if (!matchingRoom) {
+                            const last3 = cleanId.slice(-3);
+                            if (roomMap[last3]) {
+                                matchingRoom = roomMap[last3];
+                                extractedRoomNumber = last3;
+                                console.log(`Pattern 3 match (last 3): ${cleanId} -> ${last3} -> ${matchingRoom.name}`);
+                            }
+                        }
+                        
+                        // Pattern 4: Extract last 4 digits (for floors 10-12)
+                        if (!matchingRoom) {
+                            const last4 = cleanId.slice(-4);
+                            if (roomMap[last4]) {
+                                matchingRoom = roomMap[last4];
+                                extractedRoomNumber = last4;
+                                console.log(`Pattern 4 match (last 4): ${cleanId} -> ${last4} -> ${matchingRoom.name}`);
+                            }
+                        }
+                        
+                        // Pattern 5: Try numeric part matching for range
+                        if (!matchingRoom) {
+                            // Extract all digits
+                            const numberPart = cleanId.replace(/\D/g, '');
+                            // Try last 3-4 digits
+                            for (let len = 3; len <= 4; len++) {
+                                const extracted = numberPart.slice(-len);
+                                if (roomMap[extracted]) {
+                                    matchingRoom = roomMap[extracted];
+                                    extractedRoomNumber = extracted;
+                                    console.log(`Pattern 5 match (digits): ${cleanId} -> ${extracted} -> ${matchingRoom.name}`);
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (matchingRoom) {
+                            console.log(`✓ Matched ${elementId} to room ${extractedRoomNumber}: ${matchingRoom.name}`);
+                            
+                            // Store the room data on the element
+                            element.dataset.roomId = matchingRoom.id;
+                            element.dataset.roomName = matchingRoom.name;
+                            element.dataset.roomNumber = matchingRoom.number;
+                            element.dataset.roomType = matchingRoom.type;
+                            
+                            // Make it interactive
+                            element.style.cursor = 'pointer';
+                            element.style.transition = 'fill 0.2s ease, filter 0.2s ease';
+                            const originalFill = element.getAttribute('fill') || element.style.fill || 'white';
+                            element.dataset.originalFill = originalFill;
+                            
+                            // Determine hover color based on room type
+                            // Fire exits get orange/red, others get blue
+                            const isFireExit = matchingRoom.type === 'Fire Exit';
+                            const hoverColor = isFireExit 
+                                ? 'rgba(255, 140, 0, 0.8)'  // Orange for fire exits
+                                : 'rgba(59, 130, 246, 0.7)';  // Blue for regular rooms
+                            const hoverShadow = isFireExit
+                                ? 'drop-shadow(0 0 8px rgba(255, 140, 0, 0.8))'
+                                : 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))';
+                            
+                            // Add hover effects for desktop
+                            element.addEventListener('mouseenter', function(e) {
+                                console.log('Hover on:', this.id, '(Type:', this.dataset.roomType, ')');
+                                this.setAttribute('fill', hoverColor);
+                                this.style.filter = hoverShadow;
+                                this.style.opacity = '1';
+                            });
+                            
+                            element.addEventListener('mouseleave', function() {
+                                this.setAttribute('fill', this.dataset.originalFill);
+                                this.style.filter = '';
+                                this.style.opacity = '';
+                            });
+                            
+                            // Click to show room preview
+                            element.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('Clicked room:', matchingRoom.id, 'Type:', matchingRoom.type);
+                                showRoomPreview(matchingRoom.id);
+                            });
+                            
+                            // Also add touch support
+                            element.addEventListener('touchstart', (e) => {
+                                e.preventDefault();
+                                element.setAttribute('fill', hoverColor);
+                                element.style.filter = hoverShadow;
+                            });
+                            
+                            element.addEventListener('touchend', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                element.setAttribute('fill', element.dataset.originalFill);
+                                element.style.filter = '';
+                                showRoomPreview(matchingRoom.id);
+                            });
+                        } else {
+                            console.log(`✗ No match found for element ID: ${elementId}`);
+                        }
+                    });
+                    
+                    console.log('Floor plan interactivity initialized successfully');
+                }
+            })
+            .catch(err => console.error('Error fetching room data for floor plan interaction:', err));
+            
+    } catch (error) {
+        console.error('Error initializing floor plan interactivity:', error);
+    }
+}
+
+// Show floor plan SVG with clickable rooms
+window.showFloorPlanView = function(floorId, floorName, buildingName) {
+    const sidebar = document.getElementById('locationSidebar');
+    const locationCards = document.getElementById('locationCards');
+    
+    document.getElementById('buildingTitle').textContent = buildingName;
+    document.getElementById('buildingSubtitle').textContent = `Floor Plan - ${floorName}`;
+    document.getElementById('buildingRoomCount').textContent = '';
+    document.getElementById('buildingDescription').textContent = '';
+    
+    // Show loading indicator
+    locationCards.innerHTML = '<div class="text-slate-400 text-center py-8"><i class="fas fa-spinner fa-spin mr-2"></i>Loading floor plan...</div>';
+    
+    // Fetch the floor plan SVG URL from the backend
+    fetch(`/api/floor/${floorId}/`)
+        .then(r => r.json())
+        .then(data => {
+            console.log('Floor plan response:', data);
+            if (data.status === 'success' && data.floor && data.floor.floorplan_url) {
+                // Clear previous content
+                locationCards.innerHTML = '';
+                
+                // Display floor plan SVG with clickable rooms
+                const floorPlanContainer = document.createElement('div');
+                floorPlanContainer.className = 'mb-6 bg-slate-800/50 rounded-lg overflow-hidden border border-slate-600/50';
+                floorPlanContainer.innerHTML = `
+                    <div class="bg-gradient-to-r from-slate-700 to-slate-600 px-4 py-3 border-b border-slate-600">
+                        <h4 class="text-white font-semibold flex items-center gap-2">
+                            <i class="fas fa-building text-blue-400"></i>
+                            Floor Plan - Click on rooms to view details
+                        </h4>
+                    </div>
+                    <div class="p-4" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                        <div id="floorPlanSVGContainer" class="w-full rounded-lg border border-slate-600/50" style="max-height: 500px; display: flex; margin: 0 auto; background: white; overflow: auto; position: relative;">
+                            <img id="floorPlanImage" src="${data.floor.floorplan_url}" class="w-full" style="display: block;" alt="Floor plan" />
+                        </div>
+                    </div>
+                    <div class="px-4 py-2 border-t border-slate-600/50 bg-slate-800/30">
+                        <p class="text-xs text-slate-400 flex items-center gap-2">
+                            <i class="fas fa-info-circle"></i>
+                            Hover over rooms to highlight them, click to view details
+                        </p>
+                    </div>
+                `;
+                locationCards.appendChild(floorPlanContainer);
+                
+                // Initialize SVG room interactions after a small delay to ensure SVG is loaded
+                setTimeout(() => {
+                    const svgContainer = document.getElementById('floorPlanSVGContainer');
+                    const svgImage = document.getElementById('floorPlanImage');
+                    
+                    // Use fetch to get SVG content and parse it
+                    fetch(data.floor.floorplan_url)
+                        .then(response => response.text())
+                        .then(svgText => {
+                            // Parse SVG as DOM
+                            const parser = new DOMParser();
+                            const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+                            const svgElement = svgDoc.documentElement;
+                            
+                            // Make SVG element part of the DOM so we can style it
+                            svgElement.style.width = '100%';
+                            svgElement.style.height = '100%';
+                            svgElement.style.display = 'block';
+                            
+                            // Replace the image with the SVG
+                            svgContainer.innerHTML = '';
+                            svgContainer.appendChild(svgElement);
+                            
+                            // Now initialize interactivity
+                            initializeFloorPlanInteractivity(svgElement, floorId, buildingName, floorName);
+                        })
+                        .catch(err => {
+                            console.error('Error loading SVG:', err);
+                            console.log('Falling back to image display');
+                        });
+                }, 100);
+                
+                // Also show room list below the floor plan
+                const roomsContainer = document.createElement('div');
+                roomsContainer.innerHTML = '<h4 class="text-sm font-semibold text-slate-300 mt-4 mb-3 flex items-center gap-2"><i class="fas fa-door-open text-green-400"></i>Rooms on this floor:</h4>';
+                locationCards.appendChild(roomsContainer);
+                
+                // Fetch and display rooms for this floor
+                fetch(`/api/floor/${floorId}/rooms/`)
+                    .then(r => r.json())
+                    .then(roomsData => {
+                        console.log('Rooms response:', roomsData);
+                        if (roomsData.status === 'success' && roomsData.rooms && roomsData.rooms.length > 0) {
+                            roomsData.rooms.forEach(room => {
+                                const roomCard = document.createElement('div');
+                                roomCard.className = 'location-card group cursor-pointer hover:shadow-lg transition-all';
+                                
+                                // Determine icon based on room type
+                                let icon = 'fa-door-open';
+                                let iconColor = 'text-green-400';
+                                if (room.type === 'Fire Exit') {
+                                    icon = 'fa-fire';
+                                    iconColor = 'text-orange-500';
+                                } else if (room.type === 'Elevator/Stairs') {
+                                    icon = 'fa-arrow-up-down';
+                                    iconColor = 'text-blue-400';
+                                }
+                                
+                                roomCard.innerHTML = `
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <h3 class="text-base font-bold text-white group-hover:text-blue-300 transition-colors flex items-center gap-2">
+                                                <i class="fas ${icon} ${iconColor}"></i>
+                                                ${room.name}
+                                            </h3>
+                                            <p class="text-xs text-slate-400">Room <span class="font-mono bg-slate-700/50 px-2 py-0.5 rounded">${room.number}</span></p>
+                                            <p class="text-xs text-slate-500 mt-1">${room.type || 'Room'}</p>
+                                        </div>
+                                        <i class="fas fa-arrow-right text-slate-500 group-hover:text-blue-400 transition-colors mt-1"></i>
+                                    </div>
+                                `;
+                                roomCard.addEventListener('click', () => {
+                                    showRoomPreview(room.id);
+                                });
+                                locationCards.appendChild(roomCard);
+                            });
+                        } else {
+                            const noRoomsMsg = document.createElement('p');
+                            noRoomsMsg.className = 'text-slate-400 text-center py-4 text-sm italic';
+                            noRoomsMsg.textContent = 'No rooms found for this floor. Rooms may not have been extracted from the SVG.';
+                            locationCards.appendChild(noRoomsMsg);
+                        }
+                        
+                        // Add back button
+                        const backBtn = document.createElement('button');
+                        backBtn.className = 'w-full mt-6 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700/70 text-slate-300 hover:text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium';
+                        backBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Back to Floors';
+                        backBtn.addEventListener('click', () => {
+                            showFloorsPanel(buildingName);
+                        });
+                        locationCards.appendChild(backBtn);
+                    })
+                    .catch(err => {
+                        console.error('Error loading rooms:', err);
+                        const errorMsg = document.createElement('p');
+                        errorMsg.className = 'text-red-400 text-center py-4 text-sm';
+                        errorMsg.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i>Error loading rooms: ${err.message}`;
+                        locationCards.appendChild(errorMsg);
+                    });
+            } else {
+                console.error('Floor plan error:', data);
+                const msg = data.message || (data.floor && !data.floor.has_svg ? 'No floor plan SVG uploaded for this floor' : 'Floor plan not available');
+                locationCards.innerHTML = `<div class="bg-yellow-900/30 border border-yellow-700/50 text-yellow-200 rounded-lg p-4 text-center"><i class="fas fa-exclamation-triangle mr-2"></i>${msg}</div>`;
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching floor plan:', error);
+            locationCards.innerHTML = `<div class="bg-red-900/30 border border-red-700/50 text-red-200 rounded-lg p-4 text-center"><i class="fas fa-times-circle mr-2"></i>Error loading floor plan: ${error.message}</div>`;
+        });
+    
     sidebar.classList.add('show');
 }
 
@@ -1351,6 +1702,45 @@ window.closeGuide = function() {
         modal.classList.add('hidden');
     });
     document.body.style.overflow = 'auto';
+}
+
+window.downloadEvacuationGuide = function() {
+    try {
+        // Get the evacuation zone SVG element
+        const svgElement = document.querySelector('#emergencyGuideModal svg');
+        if (!svgElement) {
+            alert('Evacuation guide SVG not found. Please try again.');
+            return;
+        }
+
+        // Create a new SVG document with the evacuation zones
+        const svgClone = svgElement.cloneNode(true);
+        const svgString = new XMLSerializer().serializeToString(svgClone);
+        
+        // Create a blob from the SVG
+        const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        
+        // Create download link
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'Evacuation_Zone_Map.svg');
+        link.style.visibility = 'hidden';
+        
+        // Append to body, click, and remove
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up the object URL
+        URL.revokeObjectURL(url);
+        
+        // Show confirmation message
+        showNotification('Evacuation guide downloaded successfully!', 'success');
+    } catch (error) {
+        console.error('Error downloading evacuation guide:', error);
+        alert('Failed to download evacuation guide. Please try again.');
+    }
 }
 
 window.locateRoom = function() {

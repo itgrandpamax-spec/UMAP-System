@@ -66,7 +66,7 @@ class UserRegistrationForm(UserCreationForm):
 class FloorForm(forms.ModelForm):
     class Meta:
         model = Floor
-        fields = ['name', 'building', 'model_file', 'csv_file']
+        fields = ['name', 'building', 'model_file', 'csv_file', 'floorplan_svg']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500',
@@ -87,6 +87,10 @@ class FloorForm(forms.ModelForm):
             'csv_file': forms.FileInput(attrs={
                 'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500',
                 'accept': '.csv'
+            }),
+            'floorplan_svg': forms.FileInput(attrs={
+                'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500',
+                'accept': '.svg'
             })
         }
 

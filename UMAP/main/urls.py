@@ -24,7 +24,9 @@ urlpatterns = [
     
     # AJAX endpoints
     path('api/delete/<str:model_name>/<int:item_id>/', views.delete_item, name='delete_item'),
+    path('api/floor/<int:floor_id>/', views.get_floor_data, name='get_floor_data'),
     path('api/floor/<int:floor_id>/rooms/', views.get_floor_rooms, name='get_floor_rooms'),
+    path('api/floor/<int:floor_id>/create-rooms/', views.create_rooms_from_floor_svg, name='create_rooms_from_svg'),
     path('api/buildings/', api_views.get_building_data, name='get_building_data'),
     path('api/rooms/<int:room_id>/', api_views.get_room_details, name='get_room_details'),
     path('api/room/<int:room_id>/', views.get_room_data, name='get_room_data'),

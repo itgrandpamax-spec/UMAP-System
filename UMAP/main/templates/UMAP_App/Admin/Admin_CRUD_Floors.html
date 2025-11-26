@@ -82,6 +82,56 @@
             {% endif %}
             <div id="csv-status" class="mt-2 text-sm hidden"></div>
           </div>
+
+          <!-- Floor Plan SVG Upload Field -->
+          <div class="col-span-full">
+            <label class="text-sm text-gray-300">Floor Plan SVG (.svg)</label>
+            <p class="text-xs text-gray-400 mt-1 mb-2">Upload an SVG floor plan for this floor (e.g., HPSB1.svg, HPSB2.svg, etc.)</p>
+            <div class="mt-1 flex items-center gap-4">
+              {{ form.floorplan_svg }}
+              {% if form.instance.floorplan_url %}
+              <a href="{{ form.instance.floorplan_url }}" 
+                 class="text-blue-400 hover:text-blue-300 text-sm"
+                 target="_blank">
+                <i class="fas fa-external-link-alt mr-1"></i>
+                Current Floor Plan
+              </a>
+              {% endif %}
+            </div>
+            {% if form.floorplan_svg.errors %}
+            <p class="text-red-300 text-xs mt-1">{{ form.floorplan_svg.errors.0 }}</p>
+            {% endif %}
+            
+            <!-- SVG Room Auto-Creation -->
+            <div class="mt-3 p-4 bg-slate-700/30 rounded-lg border border-slate-600">
+              <div class="flex items-center gap-2 mb-3">
+                <input type="checkbox" id="auto_create_rooms" name="auto_create_rooms" value="on" checked
+                       class="rounded border-gray-600 text-indigo-600">
+                <label for="auto_create_rooms" class="text-sm text-gray-300">
+                  Automatically extract and create rooms from SVG (enabled by default)
+                </label>
+              </div>
+              
+              <p class="text-xs text-gray-400 mb-3">
+                When you save with this option enabled, the system will automatically read the SVG file 
+                to discover room IDs and create Room records. Existing rooms will not be duplicated.
+              </p>
+              
+              <button type="button" id="preview-svg-btn" 
+                      class="px-3 py-1 bg-blue-600/20 text-blue-400 rounded-md hover:bg-blue-600/30 text-sm">
+                <i class="fas fa-eye mr-1"></i>Preview Rooms from SVG
+              </button>
+              
+              <div id="svg-preview" class="mt-3 hidden">
+                <div class="bg-slate-800/50 rounded-md p-3 max-h-64 overflow-y-auto">
+                  <p class="text-xs text-gray-400 mb-2">Rooms detected in SVG:</p>
+                  <div id="rooms-list" class="space-y-1"></div>
+                </div>
+              </div>
+              
+              <div id="svg-status" class="mt-2 text-sm hidden"></div>
+            </div>
+          </div>
           
           <div class="col-span-full flex gap-3 mt-2">
             <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
@@ -536,14 +586,113 @@
             }, 5000);
         }
 
-        // Setup event listener for import button
+        // SVG Preview Functions
+        function previewSVGRooms() {
+            const fileInput = document.getElementById('id_floorplan_svg');
+            const file = fileInput ? fileInput.files[0] : null;
+            
+            if (!file) {
+                showSVGMessage('No SVG file selected. Please select a file first.', 'error');
+                return;
+            }
+            
+            // Read and parse SVG file
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const svgContent = e.target.result;
+                    const parser = new DOMParser();
+                    const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+                    
+                    if (svgDoc.parseError) {
+                        showSVGMessage('Invalid SVG file: ' + svgDoc.parseError.reason, 'error');
+                        return;
+                    }
+                    
+                    // Extract all elements with IDs (potential rooms)
+                    const elements = svgDoc.querySelectorAll('[id]');
+                    const rooms = [];
+                    const excludedPatterns = ['hpsb', 'elevator', 'wall', 'door', 'stair', 'bg', 'background', 'frame', 'outline', 'grid'];
+                    
+                    elements.forEach(el => {
+                        const id = el.getAttribute('id');
+                        if (!id) return;
+                        
+                        // Skip structural elements
+                        const isStructural = excludedPatterns.some(pattern => 
+                            id.toLowerCase().includes(pattern)
+                        );
+                        
+                        if (!isStructural && id.match(/^\d+$/)) {  // Only numeric IDs (room numbers)
+                            rooms.push({
+                                id: id,
+                                tag: el.tagName
+                            });
+                        }
+                    });
+                    
+                    if (rooms.length === 0) {
+                        showSVGMessage('No rooms found in SVG. Numeric element IDs expected.', 'warning');
+                        return;
+                    }
+                    
+                    displayRoomsList(rooms);
+                    showSVGMessage(`Found ${rooms.length} rooms in SVG file.`, 'success');
+                    
+                } catch (error) {
+                    showSVGMessage('Error parsing SVG: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        function displayRoomsList(rooms) {
+            const roomsList = document.getElementById('rooms-list');
+            const preview = document.getElementById('svg-preview');
+            
+            roomsList.innerHTML = rooms.map((room, idx) => `
+                <div class="text-xs text-gray-300 p-2 bg-slate-700/50 rounded flex justify-between">
+                    <span>${room.id}</span>
+                    <span class="text-gray-500">(&lt;${room.tag}&gt;)</span>
+                </div>
+            `).join('');
+            
+            preview.classList.remove('hidden');
+        }
+        
+        function showSVGMessage(message, type) {
+            const element = document.getElementById('svg-status');
+            element.classList.remove('hidden');
+            element.className = `mt-2 text-sm ${
+                type === 'error' ? 'text-red-400' : 
+                type === 'warning' ? 'text-yellow-400' : 
+                'text-green-400'
+            }`;
+            element.textContent = message;
+            
+            setTimeout(() => {
+                element.classList.add('hidden');
+            }, 5000);
+        }
+        
+        // Setup event listener for SVG preview button
         document.addEventListener('DOMContentLoaded', function() {
-            const importBtn = document.getElementById('import-btn');
-            if (importBtn) {
-                importBtn.addEventListener('click', previewAndImportRoomsFromCSV);
-                console.log('Import button listener attached');
-            } else {
-                console.warn('Import button not found');
+            const previewBtn = document.getElementById('preview-svg-btn');
+            if (previewBtn) {
+                previewBtn.addEventListener('click', previewSVGRooms);
+            }
+            
+            // Log checkbox state when form is submitted
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    const checkbox = document.getElementById('auto_create_rooms');
+                    const svgFile = document.querySelector('input[name="floorplan_svg"]');
+                    console.log('Form submitted with:');
+                    console.log('  - auto_create_rooms checked:', checkbox.checked);
+                    console.log('  - auto_create_rooms in form data:', checkbox.checked ? 'on' : 'not present');
+                    console.log('  - SVG file selected:', svgFile.files.length > 0 ? svgFile.files[0].name : 'none');
+                });
             }
         });
       </script>

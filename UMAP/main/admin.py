@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Admin, Profile, Floor, Room, RoomProfile, Schedule, Feedback, UserActivity
+from .models import User, Admin, Profile, Floor, Room, RoomProfile, RoomImage, Schedule, Feedback, SavedLocation, UserActivity, UserSession
 
 
 # ---- USER ADMIN ----
@@ -75,3 +75,41 @@ class FeedbackAdmin(admin.ModelAdmin):
     list_filter = ('rating', 'creation_date')
     search_fields = ('user__username', 'room__id', 'comment')
     ordering = ('-creation_date',)
+
+
+# ---- ROOM IMAGE ADMIN ----
+@admin.register(RoomImage)
+class RoomImageAdmin(admin.ModelAdmin):
+    list_display = ('id', 'room', 'caption', 'upload_date')
+    list_filter = ('upload_date',)
+    search_fields = ('room__profile__name', 'caption')
+    ordering = ('-upload_date',)
+
+
+# ---- SAVED LOCATIONS ADMIN ----
+@admin.register(SavedLocation)
+class SavedLocationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'room', 'saved_date')
+    list_filter = ('saved_date',)
+    search_fields = ('user__username', 'room__profile__name')
+    ordering = ('-saved_date',)
+
+
+# ---- USER ACTIVITY ADMIN ----
+@admin.register(UserActivity)
+class UserActivityAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'activity_type', 'timestamp', 'ip_address')
+    list_filter = ('activity_type', 'timestamp')
+    search_fields = ('user__username', 'ip_address')
+    ordering = ('-timestamp',)
+    readonly_fields = ('timestamp', 'user', 'activity_type', 'details', 'ip_address')
+
+
+# ---- USER SESSION ADMIN ----
+@admin.register(UserSession)
+class UserSessionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'device_info', 'ip_address', 'login_time', 'is_active')
+    list_filter = ('is_active', 'login_time')
+    search_fields = ('user__username', 'ip_address', 'device_info')
+    ordering = ('-login_time',)
+    readonly_fields = ('login_time', 'last_activity')
