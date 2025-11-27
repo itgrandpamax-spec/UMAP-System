@@ -9,7 +9,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from .forms import (
     UserRegistrationForm, FloorForm, RoomForm, RoomProfileForm,
-    AdminUserForm, AdminProfileForm
+    AdminUserForm, AdminProfileForm, UserProfileForm
 )
 from .models import User, Floor, Room, RoomProfile, Profile, Schedule, UserActivity, Feedback, SavedLocation
 
@@ -273,15 +273,12 @@ def admin_profile_view(request):
             if profile.profile_pic and request.FILES.get('profile_pic'):
                 old_picture = profile.profile_pic
 
-            # Update user fields
+            # Update user fields (name only - email is read-only for regular users)
             request.user.first_name = request.POST.get('first_name', '')
             request.user.last_name = request.POST.get('last_name', '')
-            request.user.email = request.POST.get('email', '')
             request.user.save()
 
-            # Update profile fields
-            profile.email = request.POST.get('email', '')  # Keep in sync with user email
-            profile.student_id = request.POST.get('student_id', '')
+            # Update profile fields (student_id is read-only for regular users)
             profile.department = request.POST.get('department', '')
             profile.year_level = request.POST.get('year_level', 1)
             profile.description = request.POST.get('description', '')
@@ -317,7 +314,7 @@ def admin_profile_view(request):
             
             return redirect('admin_profile_view')
         
-        return render(request, 'UMAP_App/Admin/Admin_Profile.html')
+        return render(request, 'UMAP_App/Admin/Admin_Profile.html', {'profile': profile})
 
     except Exception as e:
         messages.error(request, f'Error accessing profile: {str(e)}')
@@ -967,15 +964,14 @@ def user_profile_view(request):
             if profile.profile_pic and request.FILES.get('profile_pic'):
                 old_picture = profile.profile_pic
 
-            # Update user fields
+            # Update user fields (name only - email is permanent for security)
             request.user.first_name = request.POST.get('first_name', '')
             request.user.last_name = request.POST.get('last_name', '')
-            request.user.email = request.POST.get('email', '')
+            # NOTE: Email is NOT updated from POST data - it's permanent unless changed by admin
             request.user.save()
 
-            # Update profile fields
-            profile.email = request.POST.get('email', '')  # Keep in sync with user email
-            profile.student_id = request.POST.get('student_id', '')
+            # Update profile fields (email and student_id are permanent for security)
+            # These can only be changed by admins in the admin panel
             profile.department = request.POST.get('department', '')
             profile.year_level = request.POST.get('year_level', 1)
             profile.description = request.POST.get('description', '')

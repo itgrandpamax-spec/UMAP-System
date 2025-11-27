@@ -32,6 +32,13 @@
             {% endif %}
           </div>
           <div>
+            <label class="text-sm text-gray-600">Student ID</label>
+            {{ profile_form.student_id }}
+            {% if profile_form.student_id.errors %}
+            <p class="text-red-500 text-xs mt-1">{{ profile_form.student_id.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
             <label class="text-sm text-gray-600">First Name</label>
             {{ user_form.first_name }}
           </div>
@@ -57,6 +64,13 @@
           <div>
             <label class="text-sm text-gray-600">Year Level</label>
             {{ profile_form.year_level }}
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Profile Email</label>
+            {{ profile_form.email }}
+            {% if profile_form.email.errors %}
+            <p class="text-red-500 text-xs mt-1">{{ profile_form.email.errors.0 }}</p>
+            {% endif %}
           </div>
           <div class="col-span-full">
             <label class="text-sm text-gray-600">Description</label>

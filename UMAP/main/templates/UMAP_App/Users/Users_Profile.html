@@ -77,7 +77,7 @@
                   </div>
                   <div>
                     <label class="text-xs text-gray-300 block mb-1">Student ID</label>
-                    <input type="text" name="student_id" value="{{ user.profile.student_id }}" class="w-full rounded-lg border border-slate-600 p-2.5 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none text-sm">
+                    <input type="text" name="student_id" value="{{ user.profile.student_id }}" class="w-full rounded-lg border border-slate-600 p-2.5 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none text-sm" readonly disabled>
                   </div>
                 </div>
 
@@ -95,7 +95,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label class="text-xs text-gray-300 block mb-1">Email</label>
-                    <input type="email" name="email" value="{{ user.email }}" class="w-full rounded-lg border border-slate-600 p-2.5 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none text-sm">
+                    <input type="email" name="email" value="{{ user.email }}" class="w-full rounded-lg border border-slate-600 p-2.5 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none text-sm" readonly disabled>
                   </div>
                   <div>
                     <label class="text-xs text-gray-300 block mb-1">Department</label>

@@ -12,6 +12,19 @@ from reportlab.lib.styles import getSampleStyleSheet
 import icalendar
 import pytz
 
+def _get_day_order(day):
+    """Map day name to numeric order starting from Monday"""
+    day_order = {
+        'Monday': 0,
+        'Tuesday': 1,
+        'Wednesday': 2,
+        'Thursday': 3,
+        'Friday': 4,
+        'Saturday': 5,
+        'Sunday': 6
+    }
+    return day_order.get(day, 7)  # Return 7 for unknown days (sorts last)
+
 @login_required
 def export_schedule(request, format_type='excel'):
     """
@@ -20,9 +33,11 @@ def export_schedule(request, format_type='excel'):
     - PDF
     - iCal (.ics)
     """
-    schedules = Schedule.objects.filter(user=request.user).order_by('day', 'start')
+    # Get schedules and sort by day order (Monday first) then by start time
+    schedules = Schedule.objects.filter(user=request.user)
+    schedules = sorted(schedules, key=lambda x: (_get_day_order(x.day), x.start))
     
-    if not schedules.exists():
+    if not schedules:
         return HttpResponse("No schedules found to export", status=404)
     
     if format_type == 'excel':
@@ -71,11 +86,16 @@ def _export_excel(schedules, username):
 
 def _export_pdf(schedules, username):
     """Export schedules to PDF format"""
+    from reportlab.lib.pagesizes import landscape, A4
+    from reportlab.lib.units import inch
+    
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename=schedule_{username}.pdf'
     
-    # Create PDF document
-    doc = SimpleDocTemplate(response, pagesize=letter)
+    # Create PDF document with landscape orientation for better fit
+    doc = SimpleDocTemplate(response, pagesize=landscape(letter), 
+                           topMargin=0.5*inch, bottomMargin=0.5*inch,
+                           leftMargin=0.5*inch, rightMargin=0.5*inch)
     elements = []
     
     # Styles
@@ -83,39 +103,47 @@ def _export_pdf(schedules, username):
     title_style = styles['Heading1']
     
     # Title
-    elements.append(Paragraph(f"Class Schedule - {username}", title_style))
-    elements.append(Spacer(1, 20))
+    title = Paragraph(f"Class Schedule - {username}", title_style)
+    elements.append(title)
+    elements.append(Spacer(1, 12))
     
     # Data for table
     data = [["Day", "Course Code", "Subject", "Time", "Room"]]  # Headers
     
     for schedule in schedules:
         time_str = f"{schedule.start.strftime('%I:%M %p')} - {schedule.end.strftime('%I:%M %p')}"
+        room_info = schedule.room.profile.number if hasattr(schedule.room, 'profile') and schedule.room.profile else str(schedule.room)
         row = [
             schedule.day,
             schedule.course_code,
             schedule.subject,
             time_str,
-            schedule.room
+            room_info
         ]
         data.append(row)
     
-    # Create table
-    table = Table(data, colWidths=[80, 100, 150, 120, 80])
+    # Create table with better column widths (landscape A4: 11 inches)
+    # Using proportional widths for landscape orientation
+    table = Table(data, colWidths=[1.2*inch, 1.3*inch, 2.2*inch, 1.8*inch, 1.5*inch])
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 14),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('TOPPADDING', (0, 0), (-1, 0), 10),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 12),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0f0f0')]),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
     ]))
     
     elements.append(table)

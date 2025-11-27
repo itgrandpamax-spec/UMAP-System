@@ -164,9 +164,64 @@ class AdminUserForm(forms.ModelForm):
         }
 
 class AdminProfileForm(forms.ModelForm):
+    """Form for admin to edit user profiles including email and student_id"""
     class Meta:
         model = Profile
-        fields = ['department', 'year_level', 'description', 'profile_pic']
+        fields = ['email', 'student_id', 'department', 'year_level', 'description', 'profile_pic']
+        widgets = {
+            'email': forms.EmailInput(attrs={
+                'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'
+            }),
+            'student_id': forms.TextInput(attrs={
+                'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'
+            }),
+            'department': forms.Select(attrs={
+                'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'
+            }, choices=[
+                ('', '-- Select Department --'),
+                ('IT', 'Information Technology'),
+                ('Engineering', 'Engineering'),
+                ('Business', 'Business'),
+                ('Arts', 'Arts')
+            ]),
+            'year_level': forms.Select(attrs={
+                'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'
+            }, choices=[
+                (1, '1st Year'),
+                (2, '2nd Year'),
+                (3, '3rd Year'),
+                (4, '4th Year')
+            ]),
+            'description': forms.Textarea(attrs={
+                'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500',
+                'rows': '3',
+                'maxlength': '100'
+            })
+        }
+
+class UserProfileForm(forms.ModelForm):
+    """Form for regular users to edit their own profile (email and student_id are permanent/uneditable)"""
+    # Display-only fields for email and student_id (not editable by regular users)
+    email = forms.EmailField(
+        disabled=True,
+        required=False,
+        widget=forms.EmailInput(attrs={
+            'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500',
+            'readonly': True
+        })
+    )
+    student_id = forms.CharField(
+        disabled=True,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500',
+            'readonly': True
+        })
+    )
+    
+    class Meta:
+        model = Profile
+        fields = ['email', 'student_id', 'department', 'year_level', 'description', 'profile_pic']
         widgets = {
             'department': forms.Select(attrs={
                 'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'
