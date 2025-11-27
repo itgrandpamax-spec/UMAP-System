@@ -1573,7 +1573,7 @@ def saved_locations_view(request):
         # Get all saved locations for the user
         saved_locations = SavedLocation.objects.filter(user=request.user).select_related(
             'room', 'room__floor', 'room__profile'
-        ).prefetch_related('room__room_images').order_by('-saved_date')
+        ).order_by('-saved_date')
         
         # Organize locations by building > floor > room
         organized_locations = {}
@@ -1595,18 +1595,18 @@ def saved_locations_view(request):
                     'rooms': []
                 }
             
-            # Get first room image if available
-            room_images = room.room_images.all()
-            first_image = room_images.first() if room_images else None
+            # Get first image from room profile if available
+            room_images = room.profile.get_images() if room.profile else []
+            first_image = room_images[0] if room_images else None
             
             # Add room to floor
             room_data = {
                 'room_id': room.id,
-                'room_name': room.profile.name if hasattr(room, 'profile') and room.profile else f'Room {room.id}',
-                'room_number': room.profile.number if hasattr(room, 'profile') and room.profile else 'N/A',
-                'room_type': room.profile.type if hasattr(room, 'profile') and room.profile else 'Unknown',
-                'room_description': room.profile.description if hasattr(room, 'profile') and room.profile else '',
-                'room_image': first_image.image.url if first_image else None,
+                'room_name': room.profile.name if room.profile else f'Room {room.id}',
+                'room_number': room.profile.number if room.profile else 'N/A',
+                'room_type': room.profile.type if room.profile else 'Unknown',
+                'room_description': room.profile.description if room.profile else '',
+                'room_image': first_image,
                 'saved_date': saved.saved_date,
                 'saved_id': saved.id
             }
@@ -1650,6 +1650,8 @@ def saved_locations_view(request):
     
     except Exception as e:
         print(f"Error in saved_locations_view: {str(e)}")
+        import traceback
+        traceback.print_exc()
         messages.error(request, 'Error loading saved locations')
         return render(request, 'UMAP_App/Users/Users_Saved.html', {
             'buildings': [],
@@ -1689,11 +1691,11 @@ def recent_locations_view(request):
                     if room_id and room_id not in seen_rooms:
                         seen_rooms.add(room_id)
                         try:
-                            room = Room.objects.select_related('floor', 'profile').prefetch_related('images').get(id=room_id)
-                            # Get first image if available
-                            image_url = None
-                            if room.images.exists():
-                                image_url = room.images.first().image.url if room.images.first().image else None
+                            room = Room.objects.select_related('floor', 'profile').get(id=room_id)
+                            # Get first image from room profile if available
+                            room_images = room.profile.get_images() if room.profile else []
+                            image_url = room_images[0] if room_images else None
+                            
                             recent_places.append({
                                 'type': 'room',
                                 'id': room.id,
@@ -1744,6 +1746,8 @@ def recent_locations_view(request):
     
     except Exception as e:
         print(f"Error in recent_locations_view: {str(e)}")
+        import traceback
+        traceback.print_exc()
         # Return empty state rather than showing error message since page renders fine
         return render(request, 'UMAP_App/Users/Users_Recent.html', {
             'recent_places': [],

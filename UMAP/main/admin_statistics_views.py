@@ -93,6 +93,28 @@ def admin_statistics(request):
                                         if x[1]['ratings'] else 0, reverse=True)
         ]
         
+        # Average floor rating
+        floor_ratings = {}
+        for feedback in Feedback.objects.select_related('room__floor'):
+            if feedback.room.floor:
+                floor_key = (feedback.room.floor.id, feedback.room.floor.name, feedback.room.floor.building)
+                if floor_key not in floor_ratings:
+                    floor_ratings[floor_key] = {'ratings': [], 'count': 0}
+                floor_ratings[floor_key]['ratings'].append(feedback.rating)
+                floor_ratings[floor_key]['count'] += 1
+        
+        context['floor_ratings'] = [
+            {
+                'name': floor_key[1],
+                'building': floor_key[2],
+                'rating': round(sum(data['ratings']) / len(data['ratings']), 1),
+                'count': data['count']
+            }
+            for floor_key, data in sorted(floor_ratings.items(), 
+                                         key=lambda x: sum(x[1]['ratings']) / len(x[1]['ratings']) 
+                                         if x[1]['ratings'] else 0, reverse=True)
+        ]
+        
         # ============ USER ACTIVITY ANALYTICS ============
         today = timezone.now().date()
         week_ago = timezone.now() - timedelta(days=7)

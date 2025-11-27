@@ -306,15 +306,15 @@ def get_user_recent(request):
                 if room_id and room_id not in seen_rooms:
                     seen_rooms.add(room_id)
                     try:
-                        room = Room.objects.select_related('floor', 'profile').prefetch_related('room_images').get(id=room_id)
+                        room = Room.objects.select_related('floor', 'profile').get(id=room_id)
                         print(f"    Room found: {room}")
                         
-                        # Get image URL
+                        # Get image URL from room profile
                         image_url = None
-                        if room.room_images.exists():
-                            image_url = room.room_images.first().image.url
-                        elif room.profile and room.profile.images:
-                            image_url = room.profile.images.url
+                        if room.profile:
+                            images = room.profile.get_images()
+                            if images:
+                                image_url = images[0]
                         
                         print(f"    Image URL: {image_url}")
                         
