@@ -62,7 +62,7 @@ def get_building_data(request):
 def get_room_details(request, room_id):
     """API endpoint to get detailed information about a specific room"""
     try:
-        room = Room.objects.select_related('profile', 'floor').prefetch_related('room_images').get(id=room_id)
+        room = Room.objects.select_related('profile', 'floor').get(id=room_id)
         
         if not hasattr(room, 'profile'):
             return JsonResponse({
@@ -80,15 +80,16 @@ def get_room_details(request, room_id):
                 'id': room.floor.id,
                 'name': room.floor.name,
                 'building': room.floor.building
-            }
+            },
+            'floor_id': room.floor.id
         }
         
-        # Get image URL - first from RoomImage model, then from RoomProfile
+        # Get image URL from RoomProfile.images
         image_url = None
-        if room.room_images.exists():
-            image_url = room.room_images.first().image.url
-        elif room.profile.images:
-            image_url = room.profile.images.url
+        if room.profile.images:
+            images = room.profile.get_images()
+            if images:
+                image_url = images[0]
             
         if image_url:
             room_data['image_url'] = image_url
@@ -114,6 +115,14 @@ def get_room_details(request, room_id):
 def save_location(request, room_id):
     """API endpoint to save a location for the user"""
     try:
+        # Check if user is authenticated
+        if not request.user.is_authenticated:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Please login to save locations',
+                'error': 'authentication required'
+            }, status=401)
+        
         room = Room.objects.get(id=room_id)
         
         # Create or get the saved location

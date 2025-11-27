@@ -97,26 +97,31 @@ class RoomProfile(models.Model):
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    images = models.ImageField(upload_to='rooms/', blank=True, null=True)
+    images = models.JSONField(default=list)  # Store multiple images as list of URLs
     coordinates = models.JSONField(default=dict)
 
     def __str__(self):
         return f"{self.name} ({self.number})"
-
-
-# ROOM IMAGE MODEL (for multiple images per room)
-class RoomImage(models.Model):
-    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='room_images')
-    image = models.ImageField(upload_to='rooms/images/')
-    caption = models.CharField(max_length=200, blank=True)
-    upload_date = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Image for {self.room.profile.name if self.room.profile else 'Room'}"
-
-    class Meta:
-        ordering = ['upload_date']
-
+    
+    def add_image(self, image_url):
+        """Add an image URL to the images list"""
+        if not isinstance(self.images, list):
+            self.images = []
+        if image_url not in self.images:
+            self.images.append(image_url)
+            self.save()
+    
+    def remove_image(self, image_url):
+        """Remove an image URL from the images list"""
+        if isinstance(self.images, list) and image_url in self.images:
+            self.images.remove(image_url)
+            self.save()
+    
+    def get_images(self):
+        """Get all images as a list"""
+        if isinstance(self.images, list):
+            return self.images
+        return []
 
 
 # CLASS SCHEDULE MODEL

@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import User, Profile, Floor, Room, RoomProfile, RoomImage, Schedule, Feedback
+from .models import User, Profile, Floor, Room, RoomProfile, Schedule, Feedback
 
 class UserRegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True)
@@ -136,21 +136,6 @@ class RoomProfileForm(forms.ModelForm):
             'coordinates': forms.HiddenInput(),
         }
 
-
-class RoomImageForm(forms.ModelForm):
-    class Meta:
-        model = RoomImage
-        fields = ['image', 'caption']
-        widgets = {
-            'image': forms.FileInput(attrs={
-                'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500 file:bg-blue-600 file:text-white file:border-0 file:rounded file:cursor-pointer',
-                'accept': 'image/*'
-            }),
-            'caption': forms.TextInput(attrs={
-                'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500',
-                'placeholder': 'Enter caption (optional)'
-            }),
-        }
 
 # Admin User Management Forms
 class AdminUserForm(forms.ModelForm):

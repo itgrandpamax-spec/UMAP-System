@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Admin, Profile, Floor, Room, RoomProfile, RoomImage, Schedule, Feedback, SavedLocation, UserActivity, UserSession
+from .models import User, Admin, Profile, Floor, Room, RoomProfile, Schedule, Feedback, SavedLocation, UserActivity, UserSession
 
 
 # ---- USER ADMIN ----
@@ -75,15 +75,6 @@ class FeedbackAdmin(admin.ModelAdmin):
     list_filter = ('rating', 'creation_date')
     search_fields = ('user__username', 'room__id', 'comment')
     ordering = ('-creation_date',)
-
-
-# ---- ROOM IMAGE ADMIN ----
-@admin.register(RoomImage)
-class RoomImageAdmin(admin.ModelAdmin):
-    list_display = ('id', 'room', 'caption', 'upload_date')
-    list_filter = ('upload_date',)
-    search_fields = ('room__profile__name', 'caption')
-    ordering = ('-upload_date',)
 
 
 # ---- SAVED LOCATIONS ADMIN ----

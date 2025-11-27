@@ -412,53 +412,33 @@ document.addEventListener('DOMContentLoaded', () => {
 // Building Panel Functions
 function showBuildingPanel(data) {
     const buildingId = data.id;
-    const panel = document.getElementById('buildingPanel');
+    const displayTitle = data.name === 'ADMIN' ? 'Admin Building' : data.name;
     
-    // Store the ID for reference
-    panel.dataset.buildingId = buildingId;
+    console.log('showBuildingPanel called for:', {buildingId, displayName: displayTitle});
     
-    // Format display name for the panel title
-    let displayTitle = data.name;
-    if (data.name === 'ADMIN') displayTitle = 'Admin Building';
-    
-    // First, update with the display name
-    document.getElementById('panelBuildingTitle').textContent = displayTitle;
-    document.getElementById('panelBuildingSubtitle').textContent = 'Loading information...';
-    document.getElementById('panelBuildingDescription').textContent = '';
-    document.getElementById('panelFloorCount').textContent = '--';
-    document.getElementById('panelRoomCount').textContent = '--';
-    
-    console.log('showBuildingPanel called for:', {buildingId, apiName: data.name, displayTitle});
-    
-    // Fetch building data from API to get floor/room counts AND the exact API building name
+    // Fetch building data from API to find exact building name
     fetch(`/api/buildings/`)
         .then(response => response.json())
         .then(apiResponse => {
             if (apiResponse.status === 'success' && apiResponse.buildings) {
-                let buildingData = null;
                 let exactBuildingName = null;
-                
                 const searchName = (data.name || buildingId).toLowerCase().trim();
-                console.log('Searching for building matching:', searchName);
-                console.log('Available buildings in API:', Object.keys(apiResponse.buildings));
                 
                 // Strategy 1: Exact case-insensitive match
                 for (let key in apiResponse.buildings) {
                     const keyLower = key.toLowerCase().trim();
                     if (keyLower === searchName) {
-                        buildingData = apiResponse.buildings[key];
                         exactBuildingName = key;
                         console.log('Found via exact match:', exactBuildingName);
                         break;
                     }
                 }
                 
-                // Strategy 2: Substring match (building name is contained in or contains search name)
-                if (!buildingData) {
+                // Strategy 2: Substring match
+                if (!exactBuildingName) {
                     for (let key in apiResponse.buildings) {
                         const keyLower = key.toLowerCase().trim();
                         if (keyLower.includes(searchName) || searchName.includes(keyLower)) {
-                            buildingData = apiResponse.buildings[key];
                             exactBuildingName = key;
                             console.log('Found via substring match:', exactBuildingName);
                             break;
@@ -466,73 +446,28 @@ function showBuildingPanel(data) {
                     }
                 }
                 
-                if (buildingData && exactBuildingName) {
-                    const floorCount = buildingData.floors ? buildingData.floors.length : 0;
-                    const roomCount = buildingData.rooms ? buildingData.rooms.length : 0;
-                    
-                    document.getElementById('panelBuildingTitle').textContent = displayTitle;
-                    document.getElementById('panelBuildingSubtitle').textContent = `${floorCount} Floor${floorCount !== 1 ? 's' : ''}`;
-                    document.getElementById('panelBuildingDescription').textContent = buildingData.description || '';
-                    document.getElementById('panelFloorCount').textContent = floorCount;
-                    document.getElementById('panelRoomCount').textContent = roomCount;
-                    
-                    // CRITICAL: Store the EXACT API building name for later retrieval
-                    panel.dataset.apiBuildingName = exactBuildingName;
-                    
-                    console.log('✓ Panel updated successfully:', {buildingId, exactBuildingName, floorCount, roomCount});
-                } else {
-                    console.error('✗ Building not found in API:', {searchName, availableBuildings: Object.keys(apiResponse.buildings)});
-                    // Fallback: still set the API building name to the searched name so at least something works
-                    panel.dataset.apiBuildingName = data.name;
-                    document.getElementById('panelBuildingSubtitle').textContent = 'Building Information';
+                // Go directly to floors list
+                const buildingNameToUse = exactBuildingName || data.name;
+                console.log('Going directly to floors for:', buildingNameToUse);
+                showFloorsPanel(buildingNameToUse);
+                
+                // Highlight the building on map
+                const isMobileView = window.innerWidth < 768;
+                const svgElement = document.getElementById(isMobileView ? 'umapSVG-mobile' : 'umapSVG');
+                const svgDoc = svgElement ? svgElement.contentDocument : null;
+                if (svgDoc) {
+                    const building = svgDoc.getElementById(data.name);
+                    if (building) {
+                        building.classList.add('selected');
+                        building.style.fill = '#4f46e5';
+                        building.style.filter = 'brightness(0.9)';
+                    }
                 }
             }
         })
         .catch(error => {
             console.error('Error fetching building data:', error);
-            // Fallback
-            panel.dataset.apiBuildingName = data.name;
-            document.getElementById('panelBuildingSubtitle').textContent = 'Building Information';
         });
-
-    // Position and show panel
-    const isMobile = window.innerWidth <= 768;
-    
-    panel.style.transition = 'none'; // Remove transition temporarily
-    
-    if (isMobile) {
-        // Mobile: floating modal - centered on screen with margin, positioned lower
-        panel.style.position = 'fixed';
-        panel.style.left = '50%';
-        panel.style.top = '55%';
-        panel.style.transform = 'translate(-50%, -50%)';
-        panel.style.right = 'auto';
-        panel.style.bottom = 'auto';
-        panel.style.width = 'calc(100% - 32px)';
-        panel.style.maxWidth = '500px';
-        panel.style.zIndex = '1000';
-        panel.style.maxHeight = '75vh';
-    } else {
-        // Desktop: floating centered modal
-        panel.style.position = 'fixed';
-        panel.style.left = '50%';
-        panel.style.top = '50%';
-        panel.style.transform = 'translate(-50%, -50%)';
-        panel.style.right = 'auto';
-        panel.style.bottom = 'auto';
-        panel.style.width = 'auto';
-        panel.style.maxWidth = '400px';
-        panel.style.zIndex = '1000';
-        panel.style.maxHeight = '90vh';
-    }
-
-    // Show panel with opacity animation
-    setTimeout(() => {
-        panel.style.transition = 'opacity 0.2s ease-out';
-        panel.style.opacity = '1';
-        panel.style.pointerEvents = 'auto';
-        panel.classList.add('visible');
-    }, 50);
 }
 
 // Function to hide the building panel
@@ -602,6 +537,12 @@ window.showFloorsPanel = function(buildingName) {
     document.getElementById('buildingRoomCount').textContent = '';
     document.getElementById('buildingDescription').textContent = '';
     
+    // Clear floor plan SVG container
+    const floorPlanSection = document.getElementById('locationCards-floorplan');
+    if (floorPlanSection) {
+        floorPlanSection.innerHTML = '';
+    }
+    
     locationCards.innerHTML = '<div class="text-slate-400 text-center py-4">Loading floors...</div>';
     updateSearchMode('floors');
     
@@ -642,49 +583,56 @@ window.showFloorsPanel = function(buildingName) {
                     }
                 }
                 
-                if (buildingData && buildingData.floors && buildingData.floors.length > 0) {
-                    console.log('Building data found with floors:', buildingData.floors.length);
+                if (buildingData) {
+                    console.log('Building data found:', buildingData);
                     
-                    // Create floor cards
-                    locationCards.innerHTML = '';
-                    buildingData.floors.forEach((floor) => {
-                        // Count rooms in this floor
-                        const roomsInFloor = buildingData.rooms.filter(r => r.floor === floor.name);
+                    if (buildingData.floors && buildingData.floors.length > 0) {
+                        console.log('Building data found with floors:', buildingData.floors.length);
                         
-                        const floorCard = document.createElement('div');
-                        floorCard.className = 'location-card group';
-                        floorCard.innerHTML = `
-                            <div class="flex justify-between items-start mb-3">
-                                <div class="flex-1">
-                                    <h3 class="text-lg font-bold text-white">
-                                        ${floor.name}
-                                    </h3>
-                                    <p class="text-sm text-slate-400">${roomsInFloor.length} rooms</p>
+                        // Create floor cards
+                        locationCards.innerHTML = '';
+                        buildingData.floors.forEach((floor) => {
+                            // Count rooms in this floor
+                            const roomsInFloor = buildingData.rooms.filter(r => r.floor === floor.name);
+                            
+                            const floorCard = document.createElement('div');
+                            floorCard.className = 'location-card group';
+                            floorCard.innerHTML = `
+                                <div class="flex justify-between items-start mb-3">
+                                    <div class="flex-1">
+                                        <h3 class="text-lg font-bold text-white">
+                                            ${floor.name}
+                                        </h3>
+                                        <p class="text-sm text-slate-400">${roomsInFloor.length} rooms</p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="flex gap-2">
-                                <button class="flex-1 px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-400 hover:text-purple-300 rounded text-sm transition-colors flex items-center justify-center gap-1">
-                                    <i class="fas fa-building"></i> Rooms
-                                </button>
-                            </div>
-                        `;
-                        
-                        // Add event listener to rooms button
-                        const roomsBtn = floorCard.querySelector('button');
-                        
-                        roomsBtn.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            showFloorPlanView(floor.id, floor.name, foundKey);
+                                <div class="flex gap-2">
+                                    <button class="flex-1 px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-400 hover:text-purple-300 rounded text-sm transition-colors flex items-center justify-center gap-1">
+                                        <i class="fas fa-building"></i> Rooms
+                                    </button>
+                                </div>
+                            `;
+                            
+                            // Add event listener to rooms button
+                            const roomsBtn = floorCard.querySelector('button');
+                            
+                            roomsBtn.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                showFloorPlanView(floor.id, floor.name, foundKey);
+                            });
+                            
+                            locationCards.appendChild(floorCard);
                         });
                         
-                        locationCards.appendChild(floorCard);
-                    });
-                    
-                    initializeLocationSearch();
-                    console.log('Floors loaded successfully');
+                        initializeLocationSearch();
+                        console.log('Floors loaded successfully');
+                    } else {
+                        locationCards.innerHTML = '<div class="text-slate-500 text-center py-8"><div class="text-lg">No Floors Available</div><div class="text-sm mt-2">This building has no floors set up yet.</div></div>';
+                        console.log('No floor data found for building:', buildingName);
+                    }
                 } else {
-                    locationCards.innerHTML = '<div class="text-slate-400 text-center py-4">No floors found for this building</div>';
-                    console.log('No floor data found for building:', buildingName);
+                    locationCards.innerHTML = '<div class="text-slate-400 text-center py-4">Unable to load building data</div>';
+                    console.log('Building not found:', buildingName);
                 }
             } else {
                 locationCards.innerHTML = '<div class="text-slate-400 text-center py-4">Unable to load building data</div>';
@@ -980,27 +928,19 @@ window.showFloorPlanView = function(floorId, floorName, buildingName) {
                 
                 // Display floor plan SVG with clickable rooms
                 const floorPlanContainer = document.createElement('div');
-                floorPlanContainer.className = 'mb-6 bg-slate-800/50 rounded-lg overflow-hidden border border-slate-600/50';
+                floorPlanContainer.className = 'mb-3 bg-slate-800/50 rounded-lg overflow-hidden border border-slate-600/50';
                 floorPlanContainer.innerHTML = `
-                    <div class="bg-gradient-to-r from-slate-700 to-slate-600 px-4 py-3 border-b border-slate-600">
-                        <h4 class="text-white font-semibold flex items-center gap-2">
-                            <i class="fas fa-building text-blue-400"></i>
-                            Floor Plan - Click on rooms to view details
-                        </h4>
-                    </div>
-                    <div class="p-4" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
-                        <div id="floorPlanSVGContainer" class="w-full rounded-lg border border-slate-600/50" style="max-height: 500px; display: flex; margin: 0 auto; background: white; overflow: auto; position: relative;">
+                    <div class="p-2" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                        <div id="floorPlanSVGContainer" class="w-full rounded-lg border border-slate-600/50" style="max-height: 300px; display: flex; margin: 0 auto; background: white; overflow: auto; position: relative;">
                             <img id="floorPlanImage" src="${data.floor.floorplan_url}" class="w-full" style="display: block;" alt="Floor plan" />
                         </div>
                     </div>
-                    <div class="px-4 py-2 border-t border-slate-600/50 bg-slate-800/30">
-                        <p class="text-xs text-slate-400 flex items-center gap-2">
-                            <i class="fas fa-info-circle"></i>
-                            Hover over rooms to highlight them, click to view details
-                        </p>
-                    </div>
                 `;
-                locationCards.appendChild(floorPlanContainer);
+                
+                // Put floor plan in the fixed section
+                const floorPlanSection = document.getElementById('locationCards-floorplan');
+                floorPlanSection.innerHTML = ''; // Clear previous floor plans
+                floorPlanSection.appendChild(floorPlanContainer);
                 
                 // Initialize SVG room interactions after a small delay to ensure SVG is loaded
                 setTimeout(() => {
@@ -1034,10 +974,17 @@ window.showFloorPlanView = function(floorId, floorName, buildingName) {
                         });
                 }, 100);
                 
-                // Also show room list below the floor plan
-                const roomsContainer = document.createElement('div');
-                roomsContainer.innerHTML = '<h4 class="text-sm font-semibold text-slate-300 mt-4 mb-3 flex items-center gap-2"><i class="fas fa-door-open text-green-400"></i>Rooms on this floor:</h4>';
-                locationCards.appendChild(roomsContainer);
+                // Create scrollable rooms container
+                const roomsScrollContainer = document.createElement('div');
+                roomsScrollContainer.className = 'space-y-3 md:space-y-4';
+                
+                // Add heading to scrollable container
+                const roomsHeading = document.createElement('h4');
+                roomsHeading.className = 'text-sm md:text-base font-semibold text-slate-300 mt-4 md:mt-5 mb-3 md:mb-4 flex items-center gap-2';
+                roomsHeading.innerHTML = '<i class="fas fa-door-open text-green-400"></i>Rooms on this floor:';
+                roomsScrollContainer.appendChild(roomsHeading);
+                
+                locationCards.appendChild(roomsScrollContainer);
                 
                 // Fetch and display rooms for this floor
                 fetch(`/api/floor/${floorId}/rooms/`)
@@ -1061,33 +1008,33 @@ window.showFloorPlanView = function(floorId, floorName, buildingName) {
                                 }
                                 
                                 roomCard.innerHTML = `
-                                    <div class="flex justify-between items-start">
-                                        <div class="flex-1">
-                                            <h3 class="text-base font-bold text-white group-hover:text-blue-300 transition-colors flex items-center gap-2">
-                                                <i class="fas ${icon} ${iconColor}"></i>
-                                                ${room.name}
+                                    <div class="flex justify-between items-start gap-2 md:gap-3">
+                                        <div class="flex-1 min-w-0">
+                                            <h3 class="text-xs md:text-base font-bold text-white group-hover:text-blue-300 transition-colors flex items-center gap-1">
+                                                <i class="fas ${icon} ${iconColor} flex-shrink-0"></i>
+                                                <span class="truncate">${room.name}</span>
                                             </h3>
-                                            <p class="text-xs text-slate-400">Room <span class="font-mono bg-slate-700/50 px-2 py-0.5 rounded">${room.number}</span></p>
-                                            <p class="text-xs text-slate-500 mt-1">${room.type || 'Room'}</p>
+                                            <p class="text-xs md:text-sm text-slate-400 mt-1 md:mt-1.5">Room <span class="font-mono bg-slate-700/50 px-2 py-1 rounded text-xs">${room.number}</span></p>
+                                            <p class="text-xs md:text-sm text-slate-500 mt-1 md:mt-1.5">${room.type || 'Room'}</p>
                                         </div>
-                                        <i class="fas fa-arrow-right text-slate-500 group-hover:text-blue-400 transition-colors mt-1"></i>
+                                        <i class="fas fa-arrow-right text-slate-500 group-hover:text-blue-400 transition-colors mt-1 flex-shrink-0"></i>
                                     </div>
                                 `;
                                 roomCard.addEventListener('click', () => {
                                     showRoomPreview(room.id);
                                 });
-                                locationCards.appendChild(roomCard);
+                                roomsScrollContainer.appendChild(roomCard);
                             });
                         } else {
                             const noRoomsMsg = document.createElement('p');
-                            noRoomsMsg.className = 'text-slate-400 text-center py-4 text-sm italic';
+                            noRoomsMsg.className = 'text-slate-400 text-center py-6 text-sm md:text-base italic';
                             noRoomsMsg.textContent = 'No rooms found for this floor. Rooms may not have been extracted from the SVG.';
-                            locationCards.appendChild(noRoomsMsg);
+                            roomsScrollContainer.appendChild(noRoomsMsg);
                         }
                         
-                        // Add back button
+                        // Add back button to locationCards (fixed area)
                         const backBtn = document.createElement('button');
-                        backBtn.className = 'w-full mt-6 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700/70 text-slate-300 hover:text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium';
+                        backBtn.className = 'w-full mt-6 md:mt-8 px-4 py-3 md:py-3.5 bg-slate-700/50 hover:bg-slate-700/70 text-slate-300 hover:text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium text-sm md:text-base';
                         backBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Back to Floors';
                         backBtn.addEventListener('click', () => {
                             showFloorsPanel(buildingName);
@@ -1509,6 +1456,29 @@ window.showRoomPreview = function(roomId) {
         setText('roomModalFloor', roomData.floor || 'N/A');
         setText('roomModalDescription', roomData.description || 'No description available');
         
+        // Fetch and display floor plan with highlighted room
+        if (roomData.floor_id) {
+            fetch(`/api/floor/${roomData.floor_id}/`)
+                .then(r => r.json())
+                .then(floorData => {
+                    if (floorData.status === 'success' && floorData.floor && floorData.floor.floorplan_url) {
+                        const floorPlanContainer = document.getElementById('roomFloorPlanContainer');
+                        const floorPlanImage = document.getElementById('roomFloorPlanImage');
+                        
+                        if (floorPlanContainer && floorPlanImage) {
+                            floorPlanImage.src = floorData.floor.floorplan_url;
+                            floorPlanContainer.classList.remove('hidden');
+                            
+                            // Highlight the room on the floor plan after image loads
+                            floorPlanImage.onload = function() {
+                                highlightRoomOnFloorPlan(roomId, roomData.number);
+                            };
+                        }
+                    }
+                })
+                .catch(err => console.error('Error loading floor plan:', err));
+        }
+        
         // Update ratings display
         const avgRating = ratingsData.average_rating || 0;
         const totalRatings = ratingsData.total_ratings || 0;
@@ -1602,6 +1572,63 @@ window.showRoomPreview = function(roomId) {
         if (desc) desc.textContent = 'Error loading room details';
         if (noPhotos) noPhotos.style.display = 'block';
     });
+}
+
+function highlightRoomOnFloorPlan(roomId, roomNumber) {
+    const floorPlanImage = document.getElementById('roomFloorPlanImage');
+    const container = document.getElementById('roomFloorPlanSVGContainer');
+    
+    if (!floorPlanImage || !container) return;
+    
+    // Fetch SVG content to highlight the specific room
+    fetch(floorPlanImage.src)
+        .then(response => response.text())
+        .then(svgText => {
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+            
+            // Find all elements that might represent the room
+            const roomElements = svgDoc.querySelectorAll('text, tspan, [id*="' + roomNumber + '"], [id*="room"]');
+            const textElements = Array.from(svgDoc.querySelectorAll('text, tspan')).filter(el => 
+                el.textContent.includes(roomNumber)
+            );
+            
+            // Highlight matching elements by adding a style or border
+            [...roomElements, ...textElements].forEach(el => {
+                // Find parent group (g) element for this room
+                let parent = el.parentElement;
+                while (parent && parent.tagName !== 'g' && parent.tagName !== 'svg') {
+                    parent = parent.parentElement;
+                }
+                
+                if (parent && parent.tagName === 'g') {
+                    // Add highlight by modifying the element's appearance
+                    const highlight = svgDoc.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    const bbox = parent.getBBox ? parent.getBBox() : null;
+                    
+                    if (bbox) {
+                        highlight.setAttribute('x', bbox.x - 2);
+                        highlight.setAttribute('y', bbox.y - 2);
+                        highlight.setAttribute('width', bbox.width + 4);
+                        highlight.setAttribute('height', bbox.height + 4);
+                        highlight.setAttribute('fill', 'none');
+                        highlight.setAttribute('stroke', '#3b82f6');
+                        highlight.setAttribute('stroke-width', '3');
+                        highlight.setAttribute('rx', '4');
+                        
+                        parent.insertBefore(highlight, parent.firstChild);
+                    }
+                }
+            });
+            
+            // Convert modified SVG back to image
+            const svgString = new XMLSerializer().serializeToString(svgDoc);
+            const blob = new Blob([svgString], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            
+            floorPlanImage.src = url;
+        })
+        .catch(err => console.error('Error highlighting room on floor plan:', err));
 }
 
 function generateStarDisplay(rating) {
@@ -1941,15 +1968,17 @@ window.saveLocation = function(roomId, btn) {
             }
             
             showNotification('Location saved successfully!', 'success');
-        } else if (data.error && data.error.includes('authentication') || data.error.includes('login')) {
-            showNotification('Please sign in to save locations', 'error');
+        } else if (data.error && (data.error.includes('authentication') || data.error.includes('login'))) {
+            showNotification('Please login to save locations', 'error');
+        } else if (data.message && (data.message.includes('login') || data.message.includes('authentication'))) {
+            showNotification('Please login to save locations', 'error');
         } else {
-            showNotification('Error: ' + (data.message || 'Failed to save location'), 'error');
+            showNotification('Error: ' + (data.message || data.error || 'Failed to save location'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showNotification('Error saving location', 'error');
+        showNotification('Please login to save locations', 'error');
     });
 }
 

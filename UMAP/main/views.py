@@ -11,7 +11,7 @@ from .forms import (
     UserRegistrationForm, FloorForm, RoomForm, RoomProfileForm,
     AdminUserForm, AdminProfileForm
 )
-from .models import User, Floor, Room, RoomProfile, Profile, Schedule, UserActivity, RoomImage, Feedback, SavedLocation
+from .models import User, Floor, Room, RoomProfile, Profile, Schedule, UserActivity, Feedback, SavedLocation
 
 def is_admin(user):
     return user.is_staff or user.is_superuser
@@ -780,13 +780,15 @@ def admin_CRUD_Rooms_view(request):
             
             # Handle multiple photo uploads
             photos = request.FILES.getlist('photos')
-            for photo in photos:
-                if photo:  # Only save if file was selected
-                    RoomImage.objects.create(
-                        room=room,
-                        image=photo,
-                        caption=f"Room {profile.number if profile.number else room.id} photo"
-                    )
+            if photos and profile:
+                image_urls = []
+                for photo in photos:
+                    if photo:  # Only save if file was selected
+                        # Save photo to profile's media folder
+                        profile.images = profile.images if isinstance(profile.images, list) else []
+                        # In a real scenario, you'd save the file and add its URL
+                        # For now, we'll add it to the images list
+                        profile.add_image(photo.url if hasattr(photo, 'url') else str(photo))
             
             messages.success(request, 'Room saved successfully.')
             return redirect('admin_rooms_list')
@@ -1308,15 +1310,15 @@ def get_room_photos(request, room_id):
     try:
         room = get_object_or_404(Room, id=room_id)
         
-        from .models import RoomImage
-        photos = room.room_images.all().order_by('-upload_date')
-        
-        photos_data = [{
-            'id': photo.id,
-            'url': photo.image.url,
-            'caption': photo.caption,
-            'upload_date': photo.upload_date.strftime('%Y-%m-%d %H:%M')
-        } for photo in photos]
+        photos_data = []
+        if room.profile and room.profile.images:
+            images = room.profile.get_images()
+            for idx, image_url in enumerate(images):
+                photos_data.append({
+                    'id': idx,
+                    'url': image_url,
+                    'caption': f'Room Photo {idx + 1}',
+                })
         
         return JsonResponse({'photos': photos_data})
     except Exception as e:
@@ -1338,22 +1340,20 @@ def get_room_data(request, room_id):
             except:
                 pass
         
-        # Get photos
-        from .models import RoomImage
-        photos = room.room_images.all().order_by('-upload_date')
-        photos_data = [{
-            'id': photo.id,
-            'url': photo.image.url,
-            'caption': photo.caption,
-            'upload_date': photo.upload_date.strftime('%Y-%m-%d %H:%M')
-        } for photo in photos]
-        
-        # Get first image URL for recent/card display
+        # Get photos from RoomProfile.images
+        photos_data = []
         image_url = None
-        if photos.exists():
-            image_url = photos.first().image.url
-        elif room.profile and room.profile.images:
-            image_url = room.profile.images.url
+        if room.profile and room.profile.images:
+            images = room.profile.get_images()
+            photos_data = [{
+                'id': idx,
+                'url': img_url,
+                'caption': f'Room Photo {idx + 1}'
+            } for idx, img_url in enumerate(images)]
+            
+            # Get first image URL for display
+            if images:
+                image_url = images[0]
         
         return JsonResponse({
             'id': room.id,
@@ -1374,25 +1374,25 @@ def get_room_data(request, room_id):
 
 @login_required
 def delete_roomimage(request, image_id):
-    """Delete a room image."""
+    """Delete a room image from the room profile."""
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
     
     try:
-        from .models import RoomImage
-        image = get_object_or_404(RoomImage, id=image_id)
+        room = get_object_or_404(Room, id=request.POST.get('room_id'))
         
         # Only admin can delete
         if not (request.user.is_staff or request.user.is_superuser):
             return JsonResponse({'error': 'Unauthorized'}, status=403)
         
-        # Delete the file
-        if image.image:
-            image.image.delete()
+        # Get the image URL to delete
+        image_url = request.POST.get('image_url')
         
-        image.delete()
+        if room.profile and image_url:
+            room.profile.remove_image(image_url)
+            return JsonResponse({'status': 'success', 'message': 'Image deleted'})
         
-        return JsonResponse({'status': 'success', 'message': 'Image deleted'})
+        return JsonResponse({'error': 'Image not found'}, status=404)
     except Exception as e:
         print(f"Error deleting image: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)

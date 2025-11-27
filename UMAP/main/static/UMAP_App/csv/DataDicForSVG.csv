@@ -1,12 +1,12 @@
 Room Id,Room Number,Room Name,Level,,Room Id,Room Number,Room Name,Level
-121801,121801,HPSB Entrance,Ground Floor,,10101,101,Right Elevator,1 Floor HPSB
-121804,121804,Bldg 1 Entrance,Ground Floor,,10102,102,Left Elevator,1 Floor HPSB
-121805,121805,Bldg 2 Entrance,Ground Floor,,10201,201,Left Elevator,2 Floor HPSB
-121806,121806,Bldg 3 Entrance,Ground Floor,,10202,202,Right Elevator,2 Floor HPSB
-121807,121807,Walkway,Ground Floor,,10301,301,Left Elevator,3 Floor HPSB
-121815,121815,Soccer Field,Ground Floor,,10302,302,Right Elevator,3 Floor HPSB
-121816,121816,Oval,Ground Floor,,10401,401,Left Elevator,4 Floor HPSB
-,,,,,10402,402,Right Elevator,4 Floor HPSB
+121801,121801,HPSB Entrance,Ground Floor,,10103,101,Right Elevator,1 Floor HPSB
+121804,121804,Bldg 1 Entrance,Ground Floor,,10104,102,Left Elevator,1 Floor HPSB
+121805,121805,Bldg 2 Entrance,Ground Floor,,10202,201,Left Elevator,2 Floor HPSB
+121806,121806,Bldg 3 Entrance,Ground Floor,,10203,202,Right Elevator,2 Floor HPSB
+121807,121807,Walkway,Ground Floor,,10302,301,Left Elevator,3 Floor HPSB
+121815,121815,Soccer Field,Ground Floor,,10303,302,Right Elevator,3 Floor HPSB
+121816,121816,Oval,Ground Floor,,10402,401,Left Elevator,4 Floor HPSB
+,,,,,10403,402,Right Elevator,4 Floor HPSB
 1,1,Fire Exit,1 Floor HPSB,,10501,501,Faculty Offfice ,5 Floor HPSB
 2,2,Fire Exit,1 Floor HPSB,,10502,502,Library,5 Floor HPSB
 3,3,Fire Exit,2 Floor HPSB,,10503,503,Admin Office,5 Floor HPSB
