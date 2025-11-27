@@ -604,6 +604,7 @@ window.showFloorsPanel = function(buildingName) {
                                             ${floor.name}
                                         </h3>
                                         <p class="text-sm text-slate-400">${roomsInFloor.length} rooms</p>
+                                        <div id="floor-rating-${floor.id}" class="text-xs text-slate-400 mt-2">Loading ratings...</div>
                                     </div>
                                 </div>
                                 <div class="flex gap-2">
@@ -622,6 +623,37 @@ window.showFloorsPanel = function(buildingName) {
                             });
                             
                             locationCards.appendChild(floorCard);
+                            
+                            // Fetch and calculate average rating for this floor
+                            if (roomsInFloor.length > 0) {
+                                Promise.all(roomsInFloor.map(room => 
+                                    fetch(`/api/room/${room.id}/ratings/`)
+                                        .then(r => r.json())
+                                        .catch(() => ({ average_rating: 0, total_ratings: 0 }))
+                                ))
+                                .then(ratings => {
+                                    const ratingDiv = document.getElementById(`floor-rating-${floor.id}`);
+                                    if (ratingDiv) {
+                                        // Calculate average of all room ratings
+                                        const validRatings = ratings.filter(r => r.total_ratings > 0);
+                                        if (validRatings.length > 0) {
+                                            const avgFloorRating = validRatings.reduce((sum, r) => sum + r.average_rating, 0) / validRatings.length;
+                                            const totalRatings = validRatings.reduce((sum, r) => sum + r.total_ratings, 0);
+                                            const starsHtml = generateStarDisplay(avgFloorRating);
+                                            ratingDiv.innerHTML = `<div class="flex items-center gap-1"><div class="flex gap-0.5 text-yellow-400">${starsHtml}</div><span class="text-slate-400">${avgFloorRating.toFixed(1)} (${totalRatings} ratings)</span></div>`;
+                                        } else {
+                                            ratingDiv.innerHTML = '<span class="text-slate-500 italic">No ratings yet</span>';
+                                        }
+                                    }
+                                })
+                                .catch(() => {
+                                    const ratingDiv = document.getElementById(`floor-rating-${floor.id}`);
+                                    if (ratingDiv) ratingDiv.innerHTML = '<span class="text-slate-500 italic">Rating unavailable</span>';
+                                });
+                            } else {
+                                const ratingDiv = document.getElementById(`floor-rating-${floor.id}`);
+                                if (ratingDiv) ratingDiv.innerHTML = '<span class="text-slate-500 italic">No rooms to rate</span>';
+                            }
                         });
                         
                         initializeLocationSearch();
@@ -1016,6 +1048,7 @@ window.showFloorPlanView = function(floorId, floorName, buildingName) {
                                             </h3>
                                             <p class="text-xs md:text-sm text-slate-400 mt-1 md:mt-1.5">Room <span class="font-mono bg-slate-700/50 px-2 py-1 rounded text-xs">${room.number}</span></p>
                                             <p class="text-xs md:text-sm text-slate-500 mt-1 md:mt-1.5">${room.type || 'Room'}</p>
+                                            <div id="room-rating-${room.id}" class="text-xs text-slate-400 mt-2">Loading ratings...</div>
                                         </div>
                                         <i class="fas fa-arrow-right text-slate-500 group-hover:text-blue-400 transition-colors mt-1 flex-shrink-0"></i>
                                     </div>
@@ -1024,6 +1057,27 @@ window.showFloorPlanView = function(floorId, floorName, buildingName) {
                                     showRoomPreview(room.id);
                                 });
                                 roomsScrollContainer.appendChild(roomCard);
+                                
+                                // Fetch and display ratings for this room
+                                fetch(`/api/room/${room.id}/ratings/`)
+                                    .then(r => r.json())
+                                    .then(data => {
+                                        const ratingDiv = document.getElementById(`room-rating-${room.id}`);
+                                        if (ratingDiv) {
+                                            const avgRating = data.average_rating || 0;
+                                            const totalRatings = data.total_ratings || 0;
+                                            if (totalRatings > 0) {
+                                                const starsHtml = generateStarDisplay(avgRating);
+                                                ratingDiv.innerHTML = `<div class="flex items-center gap-1"><div class="flex gap-0.5 text-yellow-400">${starsHtml}</div><span class="text-slate-400">${avgRating.toFixed(1)} (${totalRatings})</span></div>`;
+                                            } else {
+                                                ratingDiv.innerHTML = '<span class="text-slate-500 italic">No ratings yet</span>';
+                                            }
+                                        }
+                                    })
+                                    .catch(err => {
+                                        const ratingDiv = document.getElementById(`room-rating-${room.id}`);
+                                        if (ratingDiv) ratingDiv.innerHTML = '<span class="text-slate-500 italic">Rating unavailable</span>';
+                                    });
                             });
                         } else {
                             const noRoomsMsg = document.createElement('p');
