@@ -1758,8 +1758,11 @@ def get_room_ratings(request, room_id):
             'comment': feedback.comment,
             'user': feedback.user.display_name() if feedback.user else 'Anonymous',
             'date': feedback.creation_date.strftime('%Y-%m-%d %H:%M'),
+            'created_at': feedback.creation_date.isoformat(),
+            'updated_at': feedback.updated_at.isoformat(),
             'user_type': feedback.user.get_type_display() if feedback.user else 'Guest',
-            'profile_picture': feedback.user.profile.profile_pic.url if feedback.user and hasattr(feedback.user, 'profile') and feedback.user.profile.profile_pic else None
+            'profile_picture': feedback.user.profile.profile_pic.url if feedback.user and hasattr(feedback.user, 'profile') and feedback.user.profile.profile_pic else None,
+            'is_own_feedback': request.user.is_authenticated and feedback.user == request.user
         } for feedback in feedbacks]
         
         return JsonResponse({
@@ -1888,10 +1891,34 @@ def delete_feedback(request, feedback_id):
         })
     except Feedback.DoesNotExist:
         return JsonResponse({'error': 'Feedback not found'}, status=404)
+
+@require_http_methods(["POST"])
+def delete_user_feedback(request, feedback_id):
+    """Delete a user's own feedback/rating"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'status': 'error', 'message': 'Must be logged in'}, status=401)
+    
+    try:
+        from .models import Feedback
+        
+        feedback = Feedback.objects.filter(id=feedback_id).first()
+        if not feedback:
+            return JsonResponse({'status': 'error', 'message': 'Feedback not found'}, status=404)
+        
+        # Check if the user owns this feedback
+        if feedback.user != request.user:
+            return JsonResponse({'status': 'error', 'message': 'You can only delete your own feedback'}, status=403)
+        
+        room_id = feedback.room.id
+        feedback.delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Rating deleted successfully'
+        })
     except Exception as e:
-        print(f"Error deleting feedback {feedback_id}: {str(e)}")
-        print(f"Admin user: {request.user.username}")
-        return JsonResponse({'error': str(e)}, status=500)
+        print(f"Error deleting user feedback: {str(e)}")
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 
 @login_required

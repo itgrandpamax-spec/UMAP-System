@@ -525,10 +525,16 @@ window.viewBuildingDetails = function(view) {
 window.showFloorsPanel = function(buildingName) {
     const sidebar = document.getElementById('locationSidebar');
     const locationCards = document.getElementById('locationCards');
+    const backBtn = document.getElementById('backToFloorsBtn');
     
     if (!sidebar) {
         console.error('Sidebar element not found');
         return;
+    }
+    
+    // Hide the back button when viewing floors
+    if (backBtn) {
+        backBtn.classList.add('hidden');
     }
     
     // Update header
@@ -690,6 +696,16 @@ window.showRoomsInFloor = function(buildingName, floorName, rooms) {
     locationCards.innerHTML = '';
     updateSearchMode('rooms');
     
+    // Show the back button in the header when viewing rooms
+    const backBtn = document.getElementById('backToFloorsBtn');
+    if (backBtn) {
+        backBtn.classList.remove('hidden');
+        // Set the onclick handler to navigate back to floors
+        backBtn.onclick = () => {
+            showFloorsPanel(buildingName);
+        };
+    }
+    
     // Create room cards
     rooms.forEach(room => {
         const roomCard = document.createElement('div');
@@ -737,15 +753,6 @@ window.showRoomsInFloor = function(buildingName, floorName, rooms) {
                 if (ratingDiv) ratingDiv.innerHTML = '<span class="text-slate-500 italic">Rating unavailable</span>';
             });
     });
-    
-    // Add back button inside locationCards container
-    const backBtn = document.createElement('button');
-    backBtn.className = 'w-full mt-4 px-4 py-2 bg-slate-700/50 hover:bg-slate-700/70 text-slate-300 hover:text-white rounded-lg transition-colors flex items-center justify-center gap-2';
-    backBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Back to Floors';
-    backBtn.addEventListener('click', () => {
-        showFloorsPanel(buildingName);
-    });
-    locationCards.appendChild(backBtn);
     
     initializeLocationSearch();
     sidebar.classList.add('show');
@@ -940,11 +947,23 @@ function initializeFloorPlanInteractivity(svgElement, floorId, buildingName, flo
 window.showFloorPlanView = function(floorId, floorName, buildingName) {
     const sidebar = document.getElementById('locationSidebar');
     const locationCards = document.getElementById('locationCards');
+    const backBtn = document.getElementById('backToFloorsBtn');
     
     document.getElementById('buildingTitle').textContent = buildingName;
     document.getElementById('buildingSubtitle').textContent = `Floor Plan - ${floorName}`;
     document.getElementById('buildingRoomCount').textContent = '';
     document.getElementById('buildingDescription').textContent = '';
+    
+    // Set search mode to rooms since we're viewing rooms
+    updateSearchMode('rooms');
+    
+    // Show the back button in the header when viewing floor plan/rooms
+    if (backBtn) {
+        backBtn.classList.remove('hidden');
+        backBtn.onclick = () => {
+            showFloorsPanel(buildingName);
+        };
+    }
     
     // Show loading indicator
     locationCards.innerHTML = '<div class="text-slate-400 text-center py-8"><i class="fas fa-spinner fa-spin mr-2"></i>Loading floor plan...</div>';
@@ -1086,14 +1105,8 @@ window.showFloorPlanView = function(floorId, floorName, buildingName) {
                             roomsScrollContainer.appendChild(noRoomsMsg);
                         }
                         
-                        // Add back button to locationCards (fixed area)
-                        const backBtn = document.createElement('button');
-                        backBtn.className = 'w-full mt-6 md:mt-8 px-4 py-3 md:py-3.5 bg-slate-700/50 hover:bg-slate-700/70 text-slate-300 hover:text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium text-sm md:text-base';
-                        backBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Back to Floors';
-                        backBtn.addEventListener('click', () => {
-                            showFloorsPanel(buildingName);
-                        });
-                        locationCards.appendChild(backBtn);
+                        // Initialize search functionality for rooms
+                        initializeLocationSearch();
                     })
                     .catch(err => {
                         console.error('Error loading rooms:', err);
@@ -1127,6 +1140,7 @@ window.showBuildingLocations = function(buildingId) {
 // Search/Filter functionality for locations
 let allLocationCards = [];
 let currentSearchMode = null; // 'floors' or 'rooms'
+let searchListenerInitialized = false; // Track if search listener is already attached
 
 window.initializeLocationSearch = function() {
     const searchInput = document.getElementById('locationSearchInput');
@@ -1134,16 +1148,29 @@ window.initializeLocationSearch = function() {
     const noResultsMsg = document.getElementById('noSearchResults');
     const resultCount = document.getElementById('searchResultCount');
     
-    if (!searchInput) return;
+    if (!searchInput || !locationCards) return;
+    
+    // Only attach the listener ONCE
+    if (searchListenerInitialized) return;
+    searchListenerInitialized = true;
     
     searchInput.addEventListener('input', (e) => {
         const searchTerm = e.target.value.toLowerCase().trim();
         
+        // Find ALL elements with h3 (including nested ones in roomsScrollContainer)
+        const allH3Elements = locationCards.querySelectorAll('h3');
+        const cards = Array.from(allH3Elements).map(h3 => h3.closest('div.location-card')).filter(card => card !== null);
+        
+        const roomsHeading = locationCards.querySelector('h4');
+        
+        console.log(`Search: "${searchTerm}", Mode: ${currentSearchMode}, Total cards: ${cards.length}`);
+        
         if (searchTerm === '') {
             // Show all cards if search is empty
-            Array.from(locationCards.children).forEach(card => {
-                card.style.display = 'block';
+            cards.forEach(card => {
+                card.style.removeProperty('display');
             });
+            if (roomsHeading) roomsHeading.style.removeProperty('display');
             noResultsMsg.classList.add('hidden');
             resultCount.textContent = currentSearchMode === 'floors' 
                 ? 'Showing all floors' 
@@ -1152,22 +1179,44 @@ window.initializeLocationSearch = function() {
         }
         
         let visibleCount = 0;
-        Array.from(locationCards.children).forEach(card => {
-            const titleElement = card.querySelector('h3');
-            const subtitleElement = card.querySelector('p');
-            const title = titleElement ? titleElement.textContent.toLowerCase() : '';
-            const subtitle = subtitleElement ? subtitleElement.textContent.toLowerCase() : '';
+        cards.forEach(card => {
+            const h3 = card.querySelector('h3');
+            const title = h3 ? h3.textContent.toLowerCase() : '';
             
-            // Match against title, room number, floor name, or room type
-            const matches = title.includes(searchTerm) || subtitle.includes(searchTerm);
+            let matches = false;
+            if (currentSearchMode === 'floors') {
+                // Floor search: only match floor name in h3
+                matches = title.includes(searchTerm);
+            } else {
+                // Room search: match room name (h3) or room number from all p tags
+                matches = title.includes(searchTerm);
+                
+                // If title doesn't match, search all p tags for room number
+                if (!matches) {
+                    const allP = card.querySelectorAll('p');
+                    for (let p of allP) {
+                        if (p.textContent.toLowerCase().includes(searchTerm)) {
+                            matches = true;
+                            break;
+                        }
+                    }
+                }
+            }
             
             if (matches) {
                 card.style.display = 'block';
                 visibleCount++;
+                console.log(`Match: ${title}`);
             } else {
                 card.style.display = 'none';
+                console.log(`No match: ${title}`);
             }
         });
+        
+        // Show/hide the "Rooms on this floor:" heading based on visible count
+        if (roomsHeading) {
+            roomsHeading.style.display = (visibleCount > 0) ? 'block' : 'none';
+        }
         
         // Show/hide no results message
         if (visibleCount === 0) {
@@ -1544,54 +1593,8 @@ window.showRoomPreview = function(roomId) {
         const avgStarsHtml = generateStarDisplay(avgRating);
         setHTML('roomAverageStars', avgStarsHtml);
         
-        // Show/hide rating form based on authentication
-        const rateRoomContainer = document.getElementById('rateRoomContainer');
-        const loginPromptContainer = document.getElementById('loginPromptContainer');
-        
-        if (rateRoomContainer && loginPromptContainer) {
-            if (ratingsData.is_authenticated) {
-                rateRoomContainer.classList.remove('hidden');
-                loginPromptContainer.classList.add('hidden');
-                
-                // If user has already rated, pre-populate the form and update button text
-                if (ratingsData.user_rating) {
-                    const selectedRating = document.getElementById('selectedRating');
-                    const ratingComment = document.getElementById('ratingComment');
-                    if (selectedRating) selectedRating.value = ratingsData.user_rating.rating;
-                    if (ratingComment) ratingComment.value = ratingsData.user_rating.comment;
-                    
-                    // Change button text to "Update Rating"
-                    const submitBtn = rateRoomContainer.querySelector('button[onclick="submitRoomRating()"]');
-                    if (submitBtn) {
-                        submitBtn.textContent = 'Update Rating';
-                    }
-                    
-                    // Update star display
-                    const userRating = ratingsData.user_rating.rating;
-                    document.querySelectorAll('.star-rating').forEach((btn, index) => {
-                        const star = btn.querySelector('i');
-                        if (star) {
-                            if (index < userRating) {
-                                star.classList.remove('far');
-                                star.classList.add('fas');
-                            } else {
-                                star.classList.remove('fas');
-                                star.classList.add('far');
-                            }
-                        }
-                    });
-                } else {
-                    // Change button text back to "Submit Rating" if no prior rating
-                    const submitBtn = rateRoomContainer.querySelector('button[onclick="submitRoomRating()"]');
-                    if (submitBtn) {
-                        submitBtn.textContent = 'Submit Rating';
-                    }
-                }
-            } else {
-                rateRoomContainer.classList.add('hidden');
-                loginPromptContainer.classList.remove('hidden');
-            }
-        }
+        // Update user rating form state
+        updateUserRatingFormState(ratingsData);
         
         // Handle photos with document fragment for better performance
         const photosGrid = document.getElementById('roomPhotosGrid');
@@ -1739,6 +1742,10 @@ function displayRoomRatings(feedbacks) {
                 ? `<img src="${feedback.profile_picture}" alt="${feedback.user}" class="w-8 h-8 rounded-full object-cover">`
                 : `<div class="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-xs font-medium">${feedback.user.charAt(0).toUpperCase()}</div>`;
             
+            // Check if the feedback was edited (compare parsed timestamps)
+            const isEdited = feedback.created_at && feedback.updated_at && 
+                           new Date(feedback.created_at).getTime() !== new Date(feedback.updated_at).getTime();
+            
             ratingDiv.innerHTML = `
                 <div class="flex justify-between items-start mb-2">
                     <div class="flex items-start gap-2">
@@ -1746,7 +1753,7 @@ function displayRoomRatings(feedbacks) {
                             ${profilePicHtml}
                         </div>
                         <div>
-                            <div class="text-sm font-medium text-white">${feedback.user}</div>
+                            <div class="text-sm font-medium text-white">${feedback.user}${isEdited ? ' <span class="text-xs text-slate-400">(edited)</span>' : ''}</div>
                             <div class="text-xs text-slate-400">${feedback.date}</div>
                         </div>
                     </div>
@@ -1976,8 +1983,73 @@ function loadRoomRatings(roomId) {
             document.getElementById('roomAverageStars').innerHTML = avgStarsHtml;
             
             displayRoomRatings(data.feedbacks);
+            
+            // Update user rating form state
+            updateUserRatingFormState(data);
         })
         .catch(error => console.error('Error loading ratings:', error));
+}
+
+function updateUserRatingFormState(ratingsData) {
+    const rateRoomContainer = document.getElementById('rateRoomContainer');
+    const loginPromptContainer = document.getElementById('loginPromptContainer');
+    
+    if (!rateRoomContainer || !loginPromptContainer) return;
+    
+    if (ratingsData.is_authenticated) {
+        rateRoomContainer.classList.remove('hidden');
+        loginPromptContainer.classList.add('hidden');
+        
+        // If user has already rated, pre-populate the form and update button text
+        if (ratingsData.user_rating) {
+            const selectedRating = document.getElementById('selectedRating');
+            const ratingComment = document.getElementById('ratingComment');
+            const deleteBtn = document.getElementById('deleteRatingButton');
+            
+            if (selectedRating) selectedRating.value = ratingsData.user_rating.rating;
+            if (ratingComment) ratingComment.value = ratingsData.user_rating.comment;
+            
+            // Store user feedback ID for deletion
+            if (deleteBtn) {
+                deleteBtn.dataset.feedbackId = ratingsData.user_rating.id;
+                deleteBtn.classList.remove('hidden');
+            }
+            
+            // Change button text to "Update Rating"
+            const submitBtn = rateRoomContainer.querySelector('button[onclick="submitRoomRating()"]');
+            if (submitBtn) {
+                submitBtn.textContent = 'Update Rating';
+            }
+            
+            // Update star display
+            const userRating = ratingsData.user_rating.rating;
+            document.querySelectorAll('.star-rating').forEach((btn, index) => {
+                const star = btn.querySelector('i');
+                if (star) {
+                    if (index < userRating) {
+                        star.classList.remove('far');
+                        star.classList.add('fas');
+                    } else {
+                        star.classList.remove('fas');
+                        star.classList.add('far');
+                    }
+                }
+            });
+        } else {
+            // Change button text back to "Submit Rating" if no prior rating
+            const submitBtn = rateRoomContainer.querySelector('button[onclick="submitRoomRating()"]');
+            const deleteBtn = document.getElementById('deleteRatingButton');
+            if (submitBtn) {
+                submitBtn.textContent = 'Submit Rating';
+            }
+            if (deleteBtn) {
+                deleteBtn.classList.add('hidden');
+            }
+        }
+    } else {
+        rateRoomContainer.classList.add('hidden');
+        loginPromptContainer.classList.remove('hidden');
+    }
 }
 
 // Close modal when clicking outside
@@ -2119,4 +2191,99 @@ window.updateSaveButtonState = function(roomId, btn) {
         }
     })
     .catch(error => console.error('Error checking saved state:', error));
+}
+
+window.deleteRating = function(feedbackId) {
+    if (!confirm('Are you sure you want to delete this rating?')) return;
+    
+    const csrfToken = getCookie('csrftoken');
+    fetch(`/api/feedback/${feedbackId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Failed to delete rating');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            showNotification('Rating deleted successfully', 'success');
+            // Reload the ratings for the room
+            const modal = document.getElementById('roomPreviewModal');
+            const roomId = modal?.dataset.currentRoomId;
+            if (roomId) {
+                loadRoomRatings(roomId);
+            }
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to delete rating'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error: ' + error.message, 'error');
+    });
+}
+
+window.deleteUserRating = function() {
+    const deleteBtn = document.getElementById('deleteRatingButton');
+    const feedbackId = deleteBtn?.dataset.feedbackId;
+    
+    if (!feedbackId) {
+        showNotification('No rating to delete', 'error');
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to delete your rating?')) return;
+    
+    const csrfToken = getCookie('csrftoken');
+    fetch(`/api/feedback/${feedbackId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Failed to delete rating');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            showNotification('Rating deleted successfully', 'success');
+            // Clear form
+            document.getElementById('selectedRating').value = '0';
+            document.getElementById('ratingComment').value = '';
+            document.querySelectorAll('.star-rating i').forEach(star => {
+                star.classList.remove('fas');
+                star.classList.add('far');
+            });
+            // Hide delete button
+            deleteBtn.classList.add('hidden');
+            // Reload the ratings for the room
+            const modal = document.getElementById('roomPreviewModal');
+            const roomId = modal?.dataset.currentRoomId;
+            if (roomId) {
+                loadRoomRatings(roomId);
+            }
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to delete rating'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error: ' + error.message, 'error');
+    });
 }

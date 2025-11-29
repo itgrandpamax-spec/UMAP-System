@@ -940,11 +940,23 @@ function initializeFloorPlanInteractivity(svgElement, floorId, buildingName, flo
 window.showFloorPlanView = function(floorId, floorName, buildingName) {
     const sidebar = document.getElementById('locationSidebar');
     const locationCards = document.getElementById('locationCards');
+    const backBtn = document.getElementById('backToFloorsBtn');
     
     document.getElementById('buildingTitle').textContent = buildingName;
     document.getElementById('buildingSubtitle').textContent = `Floor Plan - ${floorName}`;
     document.getElementById('buildingRoomCount').textContent = '';
     document.getElementById('buildingDescription').textContent = '';
+    
+    // Set search mode to rooms since we're viewing rooms
+    updateSearchMode('rooms');
+    
+    // Show the back button in the header when viewing floor plan/rooms
+    if (backBtn) {
+        backBtn.classList.remove('hidden');
+        backBtn.onclick = () => {
+            showFloorsPanel(buildingName);
+        };
+    }
     
     // Show loading indicator
     locationCards.innerHTML = '<div class="text-slate-400 text-center py-8"><i class="fas fa-spinner fa-spin mr-2"></i>Loading floor plan...</div>';
@@ -1086,14 +1098,8 @@ window.showFloorPlanView = function(floorId, floorName, buildingName) {
                             roomsScrollContainer.appendChild(noRoomsMsg);
                         }
                         
-                        // Add back button to locationCards (fixed area)
-                        const backBtn = document.createElement('button');
-                        backBtn.className = 'w-full mt-6 md:mt-8 px-4 py-3 md:py-3.5 bg-slate-700/50 hover:bg-slate-700/70 text-slate-300 hover:text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium text-sm md:text-base';
-                        backBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Back to Floors';
-                        backBtn.addEventListener('click', () => {
-                            showFloorsPanel(buildingName);
-                        });
-                        locationCards.appendChild(backBtn);
+                        // Initialize search functionality for rooms
+                        initializeLocationSearch();
                     })
                     .catch(err => {
                         console.error('Error loading rooms:', err);
@@ -1127,6 +1133,7 @@ window.showBuildingLocations = function(buildingId) {
 // Search/Filter functionality for locations
 let allLocationCards = [];
 let currentSearchMode = null; // 'floors' or 'rooms'
+let searchListenerInitialized = false; // Track if search listener is already attached
 
 window.initializeLocationSearch = function() {
     const searchInput = document.getElementById('locationSearchInput');
@@ -1134,16 +1141,29 @@ window.initializeLocationSearch = function() {
     const noResultsMsg = document.getElementById('noSearchResults');
     const resultCount = document.getElementById('searchResultCount');
     
-    if (!searchInput) return;
+    if (!searchInput || !locationCards) return;
+    
+    // Only attach the listener ONCE
+    if (searchListenerInitialized) return;
+    searchListenerInitialized = true;
     
     searchInput.addEventListener('input', (e) => {
         const searchTerm = e.target.value.toLowerCase().trim();
         
+        // Find ALL elements with h3 (including nested ones in roomsScrollContainer)
+        const allH3Elements = locationCards.querySelectorAll('h3');
+        const cards = Array.from(allH3Elements).map(h3 => h3.closest('div.location-card')).filter(card => card !== null);
+        
+        const roomsHeading = locationCards.querySelector('h4');
+        
+        console.log(`Search: "${searchTerm}", Mode: ${currentSearchMode}, Total cards: ${cards.length}`);
+        
         if (searchTerm === '') {
             // Show all cards if search is empty
-            Array.from(locationCards.children).forEach(card => {
-                card.style.display = 'block';
+            cards.forEach(card => {
+                card.style.removeProperty('display');
             });
+            if (roomsHeading) roomsHeading.style.removeProperty('display');
             noResultsMsg.classList.add('hidden');
             resultCount.textContent = currentSearchMode === 'floors' 
                 ? 'Showing all floors' 
@@ -1152,22 +1172,44 @@ window.initializeLocationSearch = function() {
         }
         
         let visibleCount = 0;
-        Array.from(locationCards.children).forEach(card => {
-            const titleElement = card.querySelector('h3');
-            const subtitleElement = card.querySelector('p');
-            const title = titleElement ? titleElement.textContent.toLowerCase() : '';
-            const subtitle = subtitleElement ? subtitleElement.textContent.toLowerCase() : '';
+        cards.forEach(card => {
+            const h3 = card.querySelector('h3');
+            const title = h3 ? h3.textContent.toLowerCase() : '';
             
-            // Match against title, room number, floor name, or room type
-            const matches = title.includes(searchTerm) || subtitle.includes(searchTerm);
+            let matches = false;
+            if (currentSearchMode === 'floors') {
+                // Floor search: only match floor name in h3
+                matches = title.includes(searchTerm);
+            } else {
+                // Room search: match room name (h3) or room number from all p tags
+                matches = title.includes(searchTerm);
+                
+                // If title doesn't match, search all p tags for room number
+                if (!matches) {
+                    const allP = card.querySelectorAll('p');
+                    for (let p of allP) {
+                        if (p.textContent.toLowerCase().includes(searchTerm)) {
+                            matches = true;
+                            break;
+                        }
+                    }
+                }
+            }
             
             if (matches) {
                 card.style.display = 'block';
                 visibleCount++;
+                console.log(`Match: ${title}`);
             } else {
                 card.style.display = 'none';
+                console.log(`No match: ${title}`);
             }
         });
+        
+        // Show/hide the "Rooms on this floor:" heading based on visible count
+        if (roomsHeading) {
+            roomsHeading.style.display = (visibleCount > 0) ? 'block' : 'none';
+        }
         
         // Show/hide no results message
         if (visibleCount === 0) {

@@ -176,6 +176,7 @@ class Feedback(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='feedbacks')
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='feedbacks')
     creation_date = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     rating = models.PositiveSmallIntegerField()
     comment = models.TextField(blank=True, max_length=100)
 
