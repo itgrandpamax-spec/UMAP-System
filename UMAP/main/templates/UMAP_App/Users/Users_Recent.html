@@ -609,12 +609,170 @@
     }
 
     function navigateToPlace(type, id) {
-        // Navigate to map with the place selected
+        // Show room preview modal instead of just navigating
         if (type === 'room') {
-            window.location.href = `{% url 'default_view' %}?room=${id}`;
+            loadAndShowRoomPreview(id);
         } else if (type === 'floor') {
             window.location.href = `{% url 'default_view' %}?floor=${id}`;
         }
+    }
+
+    // Load and display room preview modal
+    function loadAndShowRoomPreview(roomId) {
+        fetch(`/api/room/${roomId}/`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Room API Response:', data);
+                const room = data.room || data;
+                console.log('Room data:', room);
+                console.log('Photos/Images:', room.photos || room.images);
+                showRoomPreview(room);
+            })
+            .catch(error => {
+                console.error('Error loading room details:', error);
+                alert('Error loading room details');
+            });
+    }
+
+    // Show room preview modal
+    function showRoomPreview(room) {
+        // Get photos - handle both 'photos' and 'images' fields
+        const photos = room.photos || room.images || [];
+        console.log('Processing photos:', photos);
+        console.log('Photo count:', photos.length);
+        
+        // Create modal HTML
+        const modalHTML = `
+            <div id="roomPreviewOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex justify-center items-center p-4 overflow-y-auto">
+                <div class="bg-slate-900/95 rounded-2xl shadow-2xl border border-slate-700/50 w-full max-w-2xl max-h-[85vh] flex flex-col">
+                    <!-- Modal Header -->
+                    <div class="sticky top-0 bg-slate-900/95 border-b border-slate-700/50 p-4 md:p-6 flex justify-between items-start flex-shrink-0">
+                        <div class="flex items-center gap-3 flex-1 pr-4">
+                            <div class="flex-1">
+                                <h2 class="text-xl md:text-2xl font-bold text-white mb-1">${room.name || 'Room ' + room.number}</h2>
+                                <p class="text-xs md:text-sm text-blue-400 font-medium">${room.floor?.name || room.floor_name || 'Floor'}</p>
+                            </div>
+                        </div>
+                        <button onclick="closeRoomPreviewModal()" class="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-700/50 rounded-lg flex-shrink-0">
+                            <i class="fas fa-times text-lg md:text-xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- Modal Content -->
+                    <div class="p-4 md:p-6 overflow-y-auto flex-1">
+                        <!-- Photo Gallery -->
+                        <div class="mb-6">
+                            <h3 class="text-base md:text-lg font-semibold text-white mb-3">Photos</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4" id="roomPhotosGrid">
+                                ${photos && photos.length > 0 
+                                    ? photos.map((img, index) => {
+                                        // Handle different image formats
+                                        let imgUrl = '';
+                                        if (typeof img === 'string') {
+                                            imgUrl = img;
+                                        } else if (typeof img === 'object') {
+                                            imgUrl = img.image || img.image_url || img.url || '';
+                                        }
+                                        
+                                        // Ensure we have a valid URL
+                                        if (!imgUrl) {
+                                            console.warn('Invalid image at index', index, ':', img);
+                                            return '';
+                                        }
+                                        
+                                        // Make sure URL is absolute
+                                        if (!imgUrl.startsWith('http') && !imgUrl.startsWith('/')) {
+                                            imgUrl = '/' + imgUrl;
+                                        }
+                                        
+                                        console.log('Processing image', index, ':', imgUrl);
+                                        
+                                        return `
+                                            <div class="bg-slate-700/50 rounded-lg overflow-hidden border border-slate-600 hover:border-blue-400 transition-colors">
+                                                <img src="${imgUrl}" alt="Room photo ${index + 1}" class="w-full h-32 object-cover hover:scale-110 transition-transform duration-300 cursor-pointer" onclick="openFullImage('${imgUrl}')" onerror="console.error('Image failed to load:', '${imgUrl}'); this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23475569%22%3E%3Cpath d=%22M4 6h16v12H4z%22/%3E%3Ccircle cx=%2214%22 cy=%2211%22 r=%221.5%22 fill=%22%23fff%22/%3E%3Cpath d=%22M4 18l6-8 6 8m4-8l4 6%22 stroke=%22%23fff%22 stroke-width=%221.5%22 fill=%22none%22/%3E%3C/svg%3E'">
+                                            </div>
+                                        `;
+                                    }).filter(Boolean).join('')
+                                    : '<p class="text-slate-400 text-sm italic col-span-full">No photos available</p>'
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Room Details -->
+                        <div class="grid grid-cols-2 gap-3 md:gap-4 mb-6">
+                            <div class="bg-slate-800/50 rounded-xl p-3 md:p-4 border border-slate-700/50">
+                                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Room Number</div>
+                                <div class="text-base md:text-lg font-bold text-white">${room.number || room.room_number || 'N/A'}</div>
+                            </div>
+                            <div class="bg-slate-800/50 rounded-xl p-3 md:p-4 border border-slate-700/50">
+                                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Room Type</div>
+                                <div class="text-base md:text-lg font-bold text-white">${room.type || room.room_type || 'Standard'}</div>
+                            </div>
+                            <div class="bg-slate-800/50 rounded-xl p-3 md:p-4 border border-slate-700/50 col-span-2">
+                                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Floor</div>
+                                <div class="text-base md:text-lg font-bold text-white">${room.floor?.name || room.floor_name || 'N/A'}</div>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        ${room.description ? `
+                            <div class="mb-6">
+                                <h3 class="text-base md:text-lg font-semibold text-white mb-2">Description</h3>
+                                <p class="text-slate-300 leading-relaxed text-sm md:text-base">${room.description}</p>
+                            </div>
+                        ` : ''}
+
+                        <!-- Action Buttons -->
+                        <div class="grid grid-cols-2 gap-2 md:gap-3">
+                            <button onclick="initializeARTracking(${room.id})" class="px-3 md:px-4 py-2 md:py-3 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 rounded-lg transition-all duration-150 font-medium flex items-center justify-center gap-2 text-sm md:text-base">
+                                <i class="fas fa-compass"></i><span class="hidden md:inline">Navigate</span><span class="md:hidden">Nav</span>
+                            </button>
+                            <button onclick="closeRoomPreviewModal()" class="px-3 md:px-4 py-2 md:py-3 bg-slate-700/50 hover:bg-slate-700/70 text-slate-300 hover:text-white rounded-lg transition-all duration-150 font-medium text-sm md:text-base">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Remove any existing modal
+        const existingOverlay = document.getElementById('roomPreviewOverlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+        // Add close on backdrop click
+        document.getElementById('roomPreviewOverlay').addEventListener('click', (e) => {
+            if (e.target.id === 'roomPreviewOverlay') {
+                closeRoomPreviewModal();
+            }
+        });
+    }
+
+    // Close room preview modal
+    function closeRoomPreviewModal() {
+        const overlay = document.getElementById('roomPreviewOverlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+
+    // Initialize AR tracking for navigation to room
+    function initializeARTracking(roomId) {
+        console.log('Initializing AR tracking for room:', roomId);
+        // Store the target room ID for AR tracking
+        sessionStorage.setItem('arTargetRoomId', roomId);
+        // Navigate to map/AR view
+        window.location.href = `{% url 'default_view' %}?room=${roomId}&ar=true`;
+    }
+
+    // Open full image in new view
+    function openFullImage(imageSrc) {
+        window.open(imageSrc, '_blank');
     }
 
     // Scroll-to-top button functionality

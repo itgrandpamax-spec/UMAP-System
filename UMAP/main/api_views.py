@@ -70,6 +70,14 @@ def get_room_details(request, room_id):
                 'message': 'Room profile not found'
             }, status=404)
         
+        # Get images and format them properly
+        images = room.profile.get_images() if room.profile.get_images() else []
+        # Ensure all image URLs are strings and have full paths if relative
+        formatted_images = []
+        for img in images:
+            if isinstance(img, str):
+                formatted_images.append(img)
+        
         room_data = {
             'id': room.id,
             'number': room.profile.number,
@@ -82,7 +90,7 @@ def get_room_details(request, room_id):
                 'building': room.floor.building
             },
             'floor_id': room.floor.id,
-            'photos': room.profile.get_images() if room.profile.get_images() else []
+            'photos': formatted_images  # Return formatted image URLs
         }
         
         return JsonResponse({

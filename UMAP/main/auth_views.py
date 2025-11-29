@@ -9,7 +9,8 @@ from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
-from .models import User, UserActivity, Profile, College
+from django.utils import timezone
+from .models import User, UserActivity, Profile, College, UserSession
 import json
 
 def get_client_ip(request):
@@ -204,6 +205,10 @@ def signup_ajax(request):
             errors['password2'] = 'Passwords do not match'
         elif len(password1) < 8:
             errors['password1'] = 'Password must be at least 8 characters long'
+        elif not any(char.isupper() for char in password1):
+            errors['password1'] = 'Password must contain at least one uppercase letter (A-Z)'
+        elif not any(char in '!@#$%^&*()_+-=[]{}|;:,.<>?~`' for char in password1):
+            errors['password1'] = 'Password must contain at least one special character (e.g., !@#$%^&*)'
         
         if errors:
             return JsonResponse({'status': 'error', 'errors': errors})
@@ -258,6 +263,18 @@ def signup_ajax(request):
 
             # Auto login after signup
             auth_login(request, user)
+            request.session.save()  # Ensure session is persisted
+            
+            # Create UserSession record for the single device session middleware
+            UserSession.objects.create(
+                user=user,
+                session_key=request.session.session_key,
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
+                login_time=timezone.now(),
+                last_activity=timezone.now(),
+                is_active=True
+            )
             
             return JsonResponse({
                 'status': 'success',

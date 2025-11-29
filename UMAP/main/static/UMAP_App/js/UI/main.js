@@ -1553,12 +1553,18 @@ window.showRoomPreview = function(roomId) {
                 rateRoomContainer.classList.remove('hidden');
                 loginPromptContainer.classList.add('hidden');
                 
-                // If user has already rated, pre-populate the form
+                // If user has already rated, pre-populate the form and update button text
                 if (ratingsData.user_rating) {
                     const selectedRating = document.getElementById('selectedRating');
                     const ratingComment = document.getElementById('ratingComment');
                     if (selectedRating) selectedRating.value = ratingsData.user_rating.rating;
                     if (ratingComment) ratingComment.value = ratingsData.user_rating.comment;
+                    
+                    // Change button text to "Update Rating"
+                    const submitBtn = rateRoomContainer.querySelector('button[onclick="submitRoomRating()"]');
+                    if (submitBtn) {
+                        submitBtn.textContent = 'Update Rating';
+                    }
                     
                     // Update star display
                     const userRating = ratingsData.user_rating.rating;
@@ -1574,6 +1580,12 @@ window.showRoomPreview = function(roomId) {
                             }
                         }
                     });
+                } else {
+                    // Change button text back to "Submit Rating" if no prior rating
+                    const submitBtn = rateRoomContainer.querySelector('button[onclick="submitRoomRating()"]');
+                    if (submitBtn) {
+                        submitBtn.textContent = 'Submit Rating';
+                    }
                 }
             } else {
                 rateRoomContainer.classList.add('hidden');
