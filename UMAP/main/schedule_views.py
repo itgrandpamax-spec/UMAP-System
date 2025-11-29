@@ -5,6 +5,7 @@ from django.views.decorators.http import require_http_methods
 from django.core.exceptions import ValidationError
 from django.db import models
 from .models import Schedule, Room, Floor, RoomProfile
+from .room_manager import RoomNameManager
 import json
 import os
 import signal
@@ -393,7 +394,36 @@ def _clean_room_text(raw_room):
     return "TBA"
 
 
+def _find_existing_room_by_number(room_number: str):
+    """
+    Find an existing Room in the database by room number.
+    Returns: Room object if found, else None
+    
+    This ensures schedules only match existing rooms in the system.
+    """
+    if not room_number or room_number == "TBA":
+        return None
+    
+    try:
+        # Try to find room by exact match on profile number
+        room = Room.objects.filter(profile__number=room_number).first()
+        if room:
+            return room
+        
+        # Try case-insensitive match
+        room = Room.objects.filter(profile__number__iexact=room_number).first()
+        if room:
+            return room
+        
+        return None
+        
+    except Exception as e:
+        print(f"Error looking up room {room_number}: {e}")
+        return None
+
+
 def _has_overlap(user, day, start, end):
+
     """
     Return True if the given time range overlaps any existing Schedule for the same user and day.
     Overlap test: existing.start < new_end and existing.end > new_start
@@ -454,7 +484,10 @@ def schedule_view(request):
 
             # Get room number, falling back to TBA if not available
             room_text = "TBA"
-            if s.room:
+            if s.room_text:
+                # Use the stored original room text (e.g., "HPSB 1009")
+                room_text = s.room_text
+            elif s.room:
                 try:
                     room_text = s.room.profile.number if hasattr(s.room, 'profile') else str(s.room)
                 except:
@@ -468,7 +501,7 @@ def schedule_view(request):
                 "day": s.day,
                 "start_time": start,  # Convert start → start_time
                 "end_time": end,      # Convert end → end_time
-                "room": room_text,    # Use processed room text
+                "room": room_text,    # Use original room text or room number
                 "color": s.color or colors[0]  # Fallback to first color if none set
             }
             schedule_data.append(schedule_item)
@@ -537,25 +570,27 @@ def add_class(request):
                     'error': 'You already have a class scheduled at this time.'
                 }, status=400)
 
-            # Find or create the room
-            try:
-                room = Room.objects.filter(profile__number=class_data['room']).first()
-                if not room:
-                    # Get any floor (we can make this more specific later)
-                    floor = Floor.objects.first()
-                    if not floor:
-                        floor = Floor.objects.create(name="Default Floor", building="Main Building")
-                    
-                    room = Room.objects.create(floor=floor)
+            # Try to find existing room - if not found, use a placeholder
+            room = _find_existing_room_by_number(class_data['room'])
+            if not room:
+                # Room doesn't exist in system - use placeholder/default room
+                # This allows displaying the schedule even if room doesn't exist
+                floor = Floor.objects.first()
+                if not floor:
+                    floor = Floor.objects.create(name="Default Floor", building="Main Building")
+                
+                # Get or create a TBA/Unknown room that serves as placeholder
+                placeholder_room = Room.objects.filter(profile__number="TBA").first()
+                if not placeholder_room:
+                    placeholder_room = Room.objects.create(floor=floor)
                     RoomProfile.objects.create(
-                        room=room,
-                        number=class_data['room'],
-                        name=f"Room {class_data['room']}",
-                        type="Classroom"
+                        room=placeholder_room,
+                        number="TBA",
+                        name="To Be Announced",
+                        type="Unknown"
                     )
-            except Exception as e:
-                messages.error(request, f"❌ Error creating room: {str(e)}")
-                return redirect('schedule_view')
+                room = placeholder_room
+                print(f"ℹ️ Room '{class_data['room']}' not in system - using placeholder")
 
             # Create new class schedule
             new_class = Schedule.objects.create(
@@ -566,7 +601,8 @@ def add_class(request):
                 day=class_data['day'],
                 start=start,
                 end=end,
-                color=class_data['color']
+                color=class_data['color'],
+                room_text=class_data['room']  # Store original room text
             )
 
             track_activity(request.user, UserActivity.ActivityType.SCHEDULE_ADD, 
@@ -756,21 +792,28 @@ def upload_schedule(request):
                                     # Define available colors directly
                                     available_colors = ['blue', 'green', 'purple', 'red', 'yellow']
                                     
-                                    # Find or create the room
-                                    room = Room.objects.filter(profile__number=room_cell).first()
+                                    # Try to find existing room
+                                    room = _find_existing_room_by_number(room_cell)
+                                    
                                     if not room:
-                                        # Get any floor (we can make this more specific later)
+                                        # Room not found - use placeholder instead of creating
                                         floor = Floor.objects.first()
                                         if not floor:
                                             floor = Floor.objects.create(name="Default Floor", building="Main Building")
                                         
-                                        room = Room.objects.create(floor=floor)
-                                        RoomProfile.objects.create(
-                                            room=room,
-                                            number=room_cell,
-                                            name=f"Room {room_cell}",
-                                            type="Classroom"
-                                        )
+                                        placeholder_room = Room.objects.filter(profile__number="TBA").first()
+                                        if not placeholder_room:
+                                            placeholder_room = Room.objects.create(floor=floor)
+                                            RoomProfile.objects.create(
+                                                room=placeholder_room,
+                                                number="TBA",
+                                                name="To Be Announced",
+                                                type="Unknown"
+                                            )
+                                        room = placeholder_room
+                                        print(f"ℹ️ Room '{room_cell}' from schedule not in system - displaying as '{room_cell}'")
+                                    else:
+                                        print(f"✓ Found existing room {room.profile.number} ({room.profile.name})")
 
                                     try:
                                         print(f"Creating schedule for user {request.user.username} (ID: {request.user.id})")
@@ -783,6 +826,7 @@ def upload_schedule(request):
                                             start=st,
                                             end=et,
                                             color=random.choice(available_colors),
+                                            room_text=room_cell  # Store original room text
                                         )
                                         print(f"Created schedule {schedule.id} for {schedule.user.username}")
                                         schedule_count += 1

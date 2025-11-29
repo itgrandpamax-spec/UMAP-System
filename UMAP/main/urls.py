@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/room/<int:room_id>/photos/', views.get_room_photos, name='get_room_photos'),
     path('api/room/<int:room_id>/ratings/', views.get_room_ratings, name='get_room_ratings'),
     path('api/room/<int:room_id>/rate/', views.submit_room_rating, name='submit_room_rating'),
+    path('api/room/<int:room_id>/delete-photo/', views.delete_room_photo, name='delete_room_photo'),
     path('api/room/<int:room_id>/save/', api_views.save_location, name='save_location'),
     path('api/room/<int:room_id>/unsave/', api_views.remove_location, name='remove_location'),
     path('api/room/<int:room_id>/check-saved/', api_views.check_saved_location, name='check_saved_location'),
@@ -60,4 +61,5 @@ urlpatterns = [
     path('admin_statistics/', admin_statistics_views.admin_statistics, name='admin_statistics'),
     path('admin_ratings/', views.admin_ratings_view, name='admin_ratings'),
     path('admin_ratings/delete/<int:feedback_id>/', views.delete_feedback, name='delete_feedback'),
+    path('admin_map/', views.admin_map_view, name='admin_map'),
 ]

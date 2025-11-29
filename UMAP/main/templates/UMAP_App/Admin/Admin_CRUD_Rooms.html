@@ -29,7 +29,7 @@
       <!-- Room Form -->
       <div class="mt-8 bg-slate-800/50 p-6 rounded-2xl shadow-sm border border-slate-600">
         <h3 class="text-lg font-medium mb-4 text-white">Add / Edit Room</h3>
-        <form method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form id="roomForm" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-4" onsubmit="prepareFormSubmit()">
           {% csrf_token %}
           <input type="hidden" name="room_id" value="{{ room_form.instance.id|default:'' }}">
           <div>
@@ -70,15 +70,15 @@
             <div class="grid grid-cols-3 gap-2">
               <div>
                 <label class="text-xs text-slate-500 block mb-1">X Coordinate</label>
-                <input type="number" id="coordX" step="0.01" placeholder="0.0" class="w-full border rounded-md p-2 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500" onchange="updateCoordinatesInput()">
+                <input type="text" id="coordX" placeholder="0.0" class="w-full border rounded-md p-2 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500" onchange="updateCoordinatesInput()">
               </div>
               <div>
                 <label class="text-xs text-slate-500 block mb-1">Y Coordinate</label>
-                <input type="number" id="coordY" step="0.01" placeholder="0.0" class="w-full border rounded-md p-2 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500" onchange="updateCoordinatesInput()">
+                <input type="text" id="coordY" placeholder="0.0" class="w-full border rounded-md p-2 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500" onchange="updateCoordinatesInput()">
               </div>
               <div>
                 <label class="text-xs text-slate-500 block mb-1">Z Coordinate</label>
-                <input type="number" id="coordZ" step="0.01" placeholder="0.0" class="w-full border rounded-md p-2 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500" onchange="updateCoordinatesInput()">
+                <input type="text" id="coordZ" placeholder="0.0" class="w-full border rounded-md p-2 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500" onchange="updateCoordinatesInput()">
               </div>
             </div>
           </div>
@@ -156,8 +156,7 @@
                 <div class="flex items-center gap-2 mb-2">
                   <h3 class="text-base font-semibold text-white">Ratings</h3>
                   <div class="flex items-center gap-1">
-                    <div class="text-yellow-400">
-                      <i id="previewAverageStars" class="fas fa-star"></i>
+                    <div id="previewAverageStars" class="text-yellow-400">
                     </div>
                     <span id="previewAverageRating" class="text-sm font-semibold text-white">--</span>
                     <span id="previewRatingCount" class="text-xs text-slate-400">ratings</span>
@@ -175,6 +174,12 @@
       <script>
 
         let photoCount = 1;
+
+        // Prepare form for submission - ensure coordinates are set
+        function prepareFormSubmit() {
+          updateCoordinatesInput();
+          console.log('Form submitted with coordinates:', document.getElementById('coordinatesInput').value);
+        }
 
         function addPhotoUpload() {
           if (photoCount >= 3) {
@@ -202,17 +207,17 @@
           const existingPhotosDiv = document.getElementById('existingPhotos');
           
           // Fetch existing photos from API
-          fetch(`/api/room/${roomId}/photos/`)
+          fetch(`/api/room/${roomId}/`)
             .then(response => response.json())
             .then(data => {
               if (data.photos && data.photos.length > 0) {
                 existingPhotosDiv.innerHTML = '<h4 class="col-span-full text-sm text-slate-400 mb-2">Existing Photos:</h4>';
-                data.photos.forEach(photo => {
+                data.photos.forEach((photo) => {
                   const photoDiv = document.createElement('div');
                   photoDiv.className = 'relative group';
                   photoDiv.innerHTML = `
                     <img src="${photo.url}" alt="Room photo" class="w-full h-24 object-cover rounded">
-                    <button type="button" onclick="deletePhoto(${photo.id})" class="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button type="button" onclick="deletePhoto('${photo.url}')" class="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                       <i class="fas fa-trash text-xs"></i>
                     </button>
                   `;
@@ -232,9 +237,9 @@
             .then(response => response.json())
             .then(data => {
               if (data.coordinates) {
-                const x = data.coordinates.x || '';
-                const y = data.coordinates.y || '';
-                const z = data.coordinates.z || '';
+                const x = data.coordinates.x !== null && data.coordinates.x !== undefined ? data.coordinates.x : '';
+                const y = data.coordinates.y !== null && data.coordinates.y !== undefined ? data.coordinates.y : '';
+                const z = data.coordinates.z !== null && data.coordinates.z !== undefined ? data.coordinates.z : '';
                 
                 document.getElementById('coordX').value = x;
                 document.getElementById('coordY').value = y;
@@ -243,9 +248,14 @@
                 document.getElementById('coordinatesInput').value = JSON.stringify(data.coordinates);
                 const coordsDisplay = document.getElementById('coordinatesDisplay');
                 coordsDisplay.textContent = `X: ${x || 'N/A'}, Y: ${y || 'N/A'}, Z: ${z || 'N/A'}`;
+                
+                // Add debug logging
+                console.log('Loaded coordinates:', {x, y, z, full: data.coordinates});
               }
             })
-            .catch(error => console.error('Error loading coordinates:', error));
+            .catch(error => {
+              console.error('Error loading coordinates:', error);
+            });
         }
 
         // Update hidden coordinates input when manual fields change
@@ -267,19 +277,27 @@
           }, 2000);
         }
 
-        function deletePhoto(photoId) {
+        function deletePhoto(photoUrl) {
           if (!confirm('Delete this photo?')) return;
           
-          fetch(`/api/delete/roomimage/${photoId}/`, {
+          const roomId = document.querySelector('input[name="room_id"]').value;
+          if (!roomId) {
+            alert('Please save the room first');
+            return;
+          }
+          
+          fetch(`/api/room/${roomId}/delete-photo/`, {
             method: 'POST',
             headers: {
               'X-CSRFToken': getCookie('csrftoken'),
               'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({ photo_url: photoUrl })
           })
-          .then(response => {
-            if (response.ok) {
-              location.reload();
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              displayExistingPhotos();
             } else {
               alert('Error deleting photo');
             }
@@ -383,7 +401,8 @@
             if (roomData.photos && roomData.photos.length > 0) {
               photosContainer.innerHTML = '<div class="grid grid-cols-1 md:grid-cols-3 gap-3">';
               roomData.photos.forEach(photo => {
-                photosContainer.innerHTML += `<img src="${photo.url}" alt="Room photo" class="w-full h-40 object-cover rounded-lg">`;
+                const photoUrl = typeof photo === 'string' ? photo : photo.url;
+                photosContainer.innerHTML += `<img src="${photoUrl}" alt="Room photo" class="w-full h-40 object-cover rounded-lg" onerror="this.src='/media/placeholder.png'">`;
               });
               photosContainer.innerHTML += '</div>';
             } else {
@@ -391,20 +410,20 @@
             }
 
             // Display ratings
-            const avgStars = Math.round(ratingsData.average_rating * 2) / 2;
-            let starHtml = '';
-            for (let i = 1; i <= 5; i++) {
-              if (i <= Math.floor(avgStars)) {
-                starHtml += '<i class="fas fa-star text-yellow-400"></i>';
-              } else if (i - avgStars < 1) {
-                starHtml += '<i class="fas fa-star-half-alt text-yellow-400"></i>';
-              } else {
-                starHtml += '<i class="far fa-star text-yellow-400"></i>';
-              }
-            }
-            document.getElementById('previewAverageStars').innerHTML = starHtml;
-            document.getElementById('previewAverageRating').textContent = avgStars.toFixed(1);
-            document.getElementById('previewRatingCount').textContent = `${ratingsData.total_ratings} rating${ratingsData.total_ratings !== 1 ? 's' : ''}`;
+            const avgRating = ratingsData.average_rating || 0;
+            const totalRatings = ratingsData.total_ratings || 0;
+            
+            // Generate star display - exactly 5 stars
+            const starHTML = Array(5).fill(0).map((_, i) => 
+              `<i class="fas fa-star text-yellow-400"></i>`
+            ).slice(0, Math.round(avgRating)).join('') +
+            Array(5).fill(0).map((_, i) => 
+              `<i class="far fa-star text-slate-500"></i>`
+            ).slice(0, 5 - Math.round(avgRating)).join('');
+            
+            document.getElementById('previewAverageStars').innerHTML = starHTML;
+            document.getElementById('previewAverageRating').textContent = avgRating.toFixed(1);
+            document.getElementById('previewRatingCount').textContent = `${totalRatings} rating${totalRatings !== 1 ? 's' : ''}`;
 
             // Display recent ratings
             const ratingsContainer = document.getElementById('previewRecentRatings');

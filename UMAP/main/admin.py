@@ -54,9 +54,69 @@ class RoomAdmin(admin.ModelAdmin):
 # ---- ROOM PROFILE ADMIN ----
 @admin.register(RoomProfile)
 class RoomProfileAdmin(admin.ModelAdmin):
-    list_display = ('id', 'room', 'number', 'name', 'type')
+    list_display = ('id', 'room', 'number', 'name', 'type', 'get_coordinates')
     search_fields = ('number', 'name', 'type')
     ordering = ('id',)
+    readonly_fields = ('get_coordinates_display',)
+    fieldsets = (
+        ('Room Information', {
+            'fields': ('room', 'number', 'name', 'type', 'description')
+        }),
+        ('Coordinates', {
+            'fields': ('get_coordinates_display',),
+            'classes': ('wide',)
+        }),
+    )
+    
+    def get_coordinates(self, obj):
+        """Display coordinates in list view with full precision"""
+        if obj.coordinates:
+            try:
+                coords = obj.coordinates if isinstance(obj.coordinates, dict) else {}
+                x = coords.get('x')
+                y = coords.get('y')
+                z = coords.get('z')
+                # Format values - handle both None and 0
+                if x is not None:
+                    x_str = f"{float(x):.2f}"
+                else:
+                    x_str = "N/A"
+                    
+                if y is not None:
+                    y_str = f"{float(y):.2f}"
+                else:
+                    y_str = "N/A"
+                    
+                if z is not None:
+                    z_str = f"{float(z):.2f}"
+                else:
+                    z_str = "N/A"
+                
+                return f"X: {x_str} | Y: {y_str} | Z: {z_str}"
+            except Exception as e:
+                return f"Error: {str(e)[:20]}"
+        return "No coords"
+    get_coordinates.short_description = 'Coordinates (X, Y, Z)'
+    
+    def get_coordinates_display(self, obj):
+        """Display full coordinates in detail view with full precision"""
+        if obj.coordinates:
+            try:
+                coords = obj.coordinates if isinstance(obj.coordinates, dict) else {}
+                x = coords.get('x', 'N/A')
+                y = coords.get('y', 'N/A')
+                z = coords.get('z', 'N/A')
+                width = coords.get('width', 'N/A')
+                height = coords.get('height', 'N/A')
+                return f"""X: {x}
+Y: {y}
+Z: {z}
+Width: {width}
+Height: {height}"""
+            except:
+                return str(obj.coordinates)
+        return "No coordinates"
+    get_coordinates_display.short_description = 'Coordinate Details'
 
 
 # ---- SCHEDULE ADMIN ----

@@ -126,7 +126,7 @@
             </a>
           </li>
           <li>
-            <a href="{% url 'admin_floor_list' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-md text-slate-300 hover:text-white">
+            <a href="{% url 'admin_map' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-md text-slate-300 hover:text-white">
               <i class="fas fa-map w-5 h-5"></i>
               <span class="text-label">Map</span>
             </a>
@@ -219,6 +219,23 @@
       sidebar.classList.toggle('collapsed');
       updateMainMargin();
       localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+    });
+
+    // Auto-dismiss messages after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+      const messageToast = document.getElementById('messageToast');
+      if (messageToast) {
+        const messages = messageToast.querySelectorAll('div[class*="bg-"]');
+        messages.forEach(message => {
+          setTimeout(() => {
+            message.style.transition = 'opacity 0.3s ease-out';
+            message.style.opacity = '0';
+            setTimeout(() => {
+              message.remove();
+            }, 300);
+          }, 5000);
+        });
+      }
     });
   </script>
 </body>

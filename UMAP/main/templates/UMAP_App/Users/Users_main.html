@@ -718,7 +718,7 @@
         </li>
         <li class="flex items-start gap-3">
           <i class="fas fa-check text-green-400 mt-1 flex-shrink-0"></i>
-          <span class="text-gray-200">Select any building to see its floors (1st-12th)</span>
+          <span class="text-gray-200">Select any building to see its floors</span>
         </li>
         <li class="flex items-start gap-3">
           <i class="fas fa-check text-green-400 mt-1 flex-shrink-0"></i>
@@ -729,9 +729,6 @@
           <span class="text-gray-200">Click any room to see detailed information</span>
         </li>
       </ul>
-      <p class="text-sm text-gray-400 mb-6">
-        Use the search bar to quickly find specific classrooms or floor numbers!
-      </p>
       <button onclick="closeGuide()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors">
         Got it!
       </button>
@@ -748,36 +745,28 @@
           <div class="bg-purple-600/20 p-3 rounded-lg">
             <img src="{% static 'UMAP_App/images/logo.png' %}" alt="UMAP Logo" class="h-8 w-8 rounded object-cover">
           </div>
-          <h2 class="text-2xl md:text-3xl font-bold text-white">Classrooms Guide</h2>
+          <h2 class="text-2xl md:text-3xl font-bold text-white">Rooms Guide</h2>
         </div>
         <button onclick="closeGuide()" class="text-gray-400 hover:text-white p-2 hover:bg-gray-700/50 rounded-lg transition-colors">
           <i class="fas fa-times"></i>
         </button>
       </div>
       <p class="text-gray-300 mb-6 leading-relaxed">
-        Finding classrooms is easy! Follow these steps:
+        Finding rooms is easy! Here are different ways to locate rooms on campus:
       </p>
       <ol class="space-y-3 mb-6">
         <li class="flex items-start gap-3">
           <span class="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-white text-sm font-bold flex-shrink-0">1</span>
-          <span class="text-gray-200">Click "Classrooms" tab at the top</span>
+          <span class="text-gray-200">Click "Floorplans" at the top of the rooms list</span>
         </li>
         <li class="flex items-start gap-3">
           <span class="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-white text-sm font-bold flex-shrink-0">2</span>
-          <span class="text-gray-200">Select a building from the list</span>
+          <span class="text-gray-200">By searching it directly through the search bar using the rooms name/number</span>
         </li>
         <li class="flex items-start gap-3">
           <span class="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-white text-sm font-bold flex-shrink-0">3</span>
-          <span class="text-gray-200">Choose a floor (1st - 12th Floor)</span>
+          <span class="text-gray-200">By manually clicking a room in the room list after choosing which floor</span>
         </li>
-        <li class="flex items-start gap-3">
-          <span class="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-white text-sm font-bold flex-shrink-0">4</span>
-          <span class="text-gray-200">You may click the floor plan to access rooms or choose manually and click any room for details</span>
-        </li>
-      </ol>
-      <div class="bg-purple-900/40 border border-purple-700/50 rounded-lg p-3 mb-6">
-        <p class="text-purple-200 text-sm"><strong>Tip:</strong> Use the search bar to quickly find classrooms by name or number!</p>
-      </div>
       <button onclick="closeGuide()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2.5 rounded-lg transition-colors">
         Got it!
       </button>

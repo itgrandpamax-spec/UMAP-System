@@ -81,18 +81,9 @@ def get_room_details(request, room_id):
                 'name': room.floor.name,
                 'building': room.floor.building
             },
-            'floor_id': room.floor.id
+            'floor_id': room.floor.id,
+            'photos': room.profile.get_images() if room.profile.get_images() else []
         }
-        
-        # Get image URL from RoomProfile.images
-        image_url = None
-        if room.profile.images:
-            images = room.profile.get_images()
-            if images:
-                image_url = images[0]
-            
-        if image_url:
-            room_data['image_url'] = image_url
         
         return JsonResponse({
             'status': 'success',

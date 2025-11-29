@@ -108,7 +108,7 @@ class RoomForm(forms.ModelForm):
 class RoomProfileForm(forms.ModelForm):
     class Meta:
         model = RoomProfile
-        fields = ['number', 'name', 'type', 'description', 'images', 'coordinates']
+        fields = ['number', 'name', 'type', 'description', 'coordinates']
         widgets = {
             'number': forms.TextInput(attrs={
                 'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500',

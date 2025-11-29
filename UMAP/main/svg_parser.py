@@ -14,11 +14,12 @@ class SVGRoom:
     """Represents a room extracted from SVG"""
     def __init__(self, room_id: str, shape_type: str, x: float, y: float, 
                  width: float = 0, height: float = 0, color: Optional[str] = None,
-                 room_type: Optional[str] = None, room_name: Optional[str] = None):
+                 room_type: Optional[str] = None, room_name: Optional[str] = None, z: float = 0):
         self.room_id = room_id
         self.shape_type = shape_type  # 'rect', 'path', 'circle', etc.
         self.x = x
         self.y = y
+        self.z = z  # Z coordinate for 3D positioning
         self.width = width
         self.height = height
         self.color = color  # Fill color from SVG (e.g., '#FF8D4F')
@@ -34,6 +35,7 @@ class SVGRoom:
             'shape_type': self.shape_type,
             'x': round(self.x, 2),
             'y': round(self.y, 2),
+            'z': round(self.z, 2),
             'width': round(self.width, 2),
             'height': round(self.height, 2),
             'center_x': round(self.center_x, 2),
@@ -44,7 +46,7 @@ class SVGRoom:
         }
     
     def __repr__(self):
-        return f"SVGRoom(id={self.room_id}, type={self.shape_type}, room_type={self.room_type}, name={self.room_name}, pos=({self.x}, {self.y}))"
+        return f"SVGRoom(id={self.room_id}, type={self.shape_type}, room_type={self.room_type}, name={self.room_name}, pos=({self.x}, {self.y}, {self.z}))"
 
 
 class SVGParser:
@@ -106,6 +108,7 @@ class SVGParser:
         self.building_id = building_id  # Will extract from filename or use provided value
         self.floor_number = floor_number  # Will extract from filename or use provided value
         self.room_name_map = {}  # Map of room number to name from CSV
+        self.room_coords_map = {}  # Map of room number to coordinates from CSV
         self._extract_building_floor_info()
         self._load_room_names_from_csv()
         self._parse_file()
@@ -133,15 +136,59 @@ class SVGParser:
                 self.building_id = "10"  # Default to HPSB building
     
     def _load_room_names_from_csv(self):
-        """Load room names from DataDicForSVG.csv using RoomNameManager"""
+        """Load room names and coordinates from CSV files using RoomNameManager"""
         try:
             from .room_manager import RoomNameManager
             
-            # Load room names using the centralized manager
+            # Load room names
             self.room_name_map = RoomNameManager.load_room_names()
+            
+            # Load room coordinates
+            self.room_coords_map = RoomNameManager.load_room_coordinates()
+            
+            # Build a mapping from Room Number to Room Id for coordinate lookup
+            # This allows matching SVG element IDs (which are room numbers) to full room IDs
+            self._room_number_to_id_map = self._build_room_number_to_id_mapping()
         
         except Exception as e:
-            print(f"Warning: Error loading room names from CSV: {str(e)}")
+            print(f"Warning: Error loading room data from CSV: {str(e)}")
+            self.room_coords_map = {}
+            self._room_number_to_id_map = {}
+    
+    def _build_room_number_to_id_mapping(self) -> Dict[str, str]:
+        """Build a mapping from Room Number to Room Id using DataDicForSVG.csv
+        
+        This allows matching SVG element IDs (which are room numbers like '720')
+        to their full Room IDs (like '10721') for coordinate lookup.
+        """
+        room_number_to_id = {}
+        csv_file = None
+        
+        try:
+            from .room_manager import RoomNameManager
+            csv_file = RoomNameManager.get_csv_file_path()
+            
+            if not csv_file:
+                return room_number_to_id
+            
+            with open(csv_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if not row or not row.get('Room Number') or not row.get('Room Id'):
+                        continue
+                    
+                    room_number = row.get('Room Number', '').strip()
+                    room_id = row.get('Room Id', '').strip()
+                    
+                    if room_number and room_id:
+                        # Map room number to room id
+                        # Example: "720" -> "10721"
+                        room_number_to_id[room_number] = room_id
+        
+        except Exception as e:
+            print(f"Warning: Error building room number to ID mapping: {str(e)}")
+        
+        return room_number_to_id
     
     def _get_room_name_from_id(self, element_id: str) -> Optional[str]:
         """Extract room number from SVG element ID and look up name in CSV"""
@@ -167,7 +214,21 @@ class SVGParser:
                             return self.room_name_map[fire_exit_key]
                     return 'Fire Exit'
             
-            # Extract room number based on floor for regular rooms
+            # === NEW: Try direct lookup using room number to ID mapping ===
+            # If clean_id is a room number (like "720"), look it up directly
+            if clean_id in self.room_name_map:
+                return self.room_name_map[clean_id]
+            
+            # === NEW: Try reverse mapping from full ID to room number ===
+            # If clean_id is a full room ID (like "10721"), find its room number
+            if clean_id in self._room_number_to_id_map.values():
+                # Find the room number that maps to this full ID
+                for room_num, full_id in self._room_number_to_id_map.items():
+                    if full_id == clean_id:
+                        if room_num in self.room_name_map:
+                            return self.room_name_map[room_num]
+            
+            # Extract room number based on floor for regular rooms (fallback)
             if self.floor_number and self.building_id and clean_id.isdigit():
                 if self.floor_number <= 9:
                     # Single digit floor: 10{F}NN format
@@ -188,6 +249,22 @@ class SVGParser:
             pass
         
         return None
+    
+    def _extract_room_number_from_id(self, element_id: str) -> Optional[str]:
+        """Extract room number from SVG element ID
+        
+        This is used to match against the Room_coords.csv
+        Returns the element_id itself (which usually matches Room_coords.csv keys)
+        """
+        try:
+            clean_id = element_id.split()[0]
+            
+            # Return the clean ID as-is - it usually matches Room_coords.csv keys directly
+            # For example: SVG ID "101101" matches Room_coords.csv key "101101"
+            return clean_id
+        
+        except Exception:
+            return element_id
     
     def _parse_file(self):
         """Parse the SVG file"""
@@ -340,14 +417,14 @@ class SVGParser:
     def _parse_element(self, element, element_id: str) -> Optional[SVGRoom]:
         """Parse a single SVG element to extract room info"""
         tag = element.tag.split('}')[-1]  # Remove namespace
-        
+
         # Extract color information
         color = self._get_color_from_element(element)
         room_type = self._get_room_type_from_color(color)
-        
+
         # Look up room name from CSV
         room_name = self._get_room_name_from_id(element_id)
-        
+
         try:
             room = None
             if tag == 'rect':
@@ -356,22 +433,63 @@ class SVGParser:
                 room = self._parse_path(element, element_id)
             elif tag == 'circle':
                 room = self._parse_circle(element, element_id)
-            elif tag == 'polygon' or tag == 'polyline':
+            elif tag in ('polygon', 'polyline'):
                 room = self._parse_polygon(element, element_id)
             elif tag == 'ellipse':
                 room = self._parse_ellipse(element, element_id)
-            
-            # Add color, room type, and room name to room if successfully parsed
+
+            # Attach color, room type, and name
             if room:
                 room.color = color
                 room.room_type = room_type
                 room.room_name = room_name
-            
+
+                # --- FIXED: robust CSV lookup for coordinates, including Z ---
+                room_id = self._extract_room_number_from_id(element_id)
+                csv_coords = None
+
+                # 1️⃣ Try mapping SVG element ID (room number) to full Room Id from CSV
+                # Example: SVG ID "720" -> Room Id "10721"
+                if room_id in self._room_number_to_id_map:
+                    full_room_id = self._room_number_to_id_map[room_id]
+                    if full_room_id in self.room_coords_map:
+                        csv_coords = self.room_coords_map[full_room_id]
+
+                # 2️⃣ Direct match with full CSV ID (for full room IDs in SVG)
+                if not csv_coords and room_id in self.room_coords_map:
+                    csv_coords = self.room_coords_map[room_id]
+
+                # 3️⃣ Extracted digits from room ID (last 3-4 digits depending on floor)
+                if not csv_coords:
+                    if self.floor_number <= 9:
+                        extracted = room_id[-3:]  # last 3 digits
+                    else:
+                        extracted = room_id[-4:]  # last 4 digits
+                    if extracted in self.room_coords_map:
+                        csv_coords = self.room_coords_map[extracted]
+
+                # 4️⃣ Endswith fallback for mismatched numbering
+                if not csv_coords:
+                    for key, val in self.room_coords_map.items():
+                        if key.endswith(room_id):
+                            csv_coords = val
+                            break
+
+                # Apply CSV coordinates if found
+                if csv_coords:
+                    room.x = csv_coords['x']
+                    room.y = csv_coords['y']
+                    room.z = csv_coords['z']  # ✅ Z included
+                    # Recalculate center
+                    room.center_x = room.x + (room.width / 2) if room.width else room.x
+                    room.center_y = room.y + (room.height / 2) if room.height else room.y
+
             return room
         except Exception as e:
             print(f"Warning: Could not parse element {element_id}: {str(e)}")
         
         return None
+
     
     def _parse_rect(self, element, element_id: str) -> Optional[SVGRoom]:
         """Parse rectangle element"""

@@ -15,6 +15,28 @@
 
       <!-- Map Table -->
       <div class="bg-slate-800/50 p-6 rounded-2xl shadow-sm border border-slate-600">
+        <!-- Stats Section -->
+        <div class="mb-6 p-4 bg-slate-700/30 rounded-lg border border-slate-700">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+              <p class="text-slate-400 text-sm mb-1">Total Rooms</p>
+              <p id="totalRoomsCount" class="text-3xl font-bold text-blue-400">{{ total_rooms|default:page_obj.paginator.count }}</p>
+            </div>
+            {% if selected_building %}
+            <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+              <p class="text-slate-400 text-sm mb-1">Building</p>
+              <p class="text-xl font-semibold text-white">{{ selected_building }}</p>
+            </div>
+            {% endif %}
+            {% if selected_floor %}
+            <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+              <p class="text-slate-400 text-sm mb-1">Floor</p>
+              <p class="text-xl font-semibold text-white">{{ selected_floor.name }}</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-medium text-white">Room List{% if selected_floor %} for {{ selected_floor.name }}{% endif %}</h3>
           <form method="get" class="flex items-center gap-2 text-sm">
@@ -56,23 +78,31 @@
             </thead>
             <tbody>
               {% for room in rooms %}
-              <tr class="border-b border-slate-700 hover:bg-slate-700/50 transition duration-150">
-                <td class="p-3 text-white">{{ room.id }}</td>
-                <td class="p-3 text-white">{{ room.profile.number }}</td>
-                <td class="p-3 text-white">{{ room.profile.name }}</td>
-                <td class="p-3 text-white">{{ room.profile.type }}</td>
-                <td class="p-3 text-white">{{ room.profile.description|default:"N/A" }}</td>
-                <td class="p-3 text-white">
-                  {% with coords=room.profile.coordinates %}
-                  {{ coords.x|floatformat:2 }}, {{ coords.y|floatformat:2 }}, {{ coords.z|floatformat:2 }}
-                  {% endwith %}
-                </td>
-                <td class="p-3 text-right space-x-2">
-                  <button onclick="viewRoomPreview({{ room.id }})" class="border border-slate-600 px-3 py-1 rounded-md text-green-400 hover:bg-green-600/50 hover:border-green-500">View</button>
-                  <button onclick="editRoom({{ room.id }})" class="border border-slate-600 px-3 py-1 rounded-md text-yellow-400 hover:bg-yellow-600/50 hover:border-yellow-500">Edit</button>
-                  <button onclick="deleteRoom({{ room.id }})" class="border border-slate-600 px-3 py-1 rounded-md text-red-400 hover:bg-red-600/50 hover:border-red-500">Delete</button>
-                </td>
-              </tr>
+                {% if room.profile %}
+                <tr class="border-b border-slate-700 hover:bg-slate-700/50 transition duration-150">
+                  <td class="p-3 text-white">{{ room.id }}</td>
+                  <td class="p-3 text-white">{{ room.profile.number }}</td>
+                  <td class="p-3 text-white">{{ room.profile.name }}</td>
+                  <td class="p-3 text-white">{{ room.profile.type }}</td>
+                  <td class="p-3 text-white">{{ room.profile.description|default:"N/A" }}</td>
+                  <td class="p-3 text-white font-mono text-xs">
+                    <span title="Click to view full coordinates" onclick="showCoordinatesDetail({{ room.id }})">
+                      {% if room.profile.coordinates %}
+                        X: {{ room.profile.coordinates.x|floatformat:2 }} 
+                        Y: {{ room.profile.coordinates.y|floatformat:2 }} 
+                        Z: {{ room.profile.coordinates.z|floatformat:2 }}
+                      {% else %}
+                        No coords
+                      {% endif %}
+                    </span>
+                  </td>
+                  <td class="p-3 text-right space-x-2">
+                    <button onclick="viewRoomPreview({{ room.id }})" class="border border-slate-600 px-3 py-1 rounded-md text-green-400 hover:bg-green-600/50 hover:border-green-500">View</button>
+                    <button onclick="editRoom({{ room.id }})" class="border border-slate-600 px-3 py-1 rounded-md text-yellow-400 hover:bg-yellow-600/50 hover:border-yellow-500">Edit</button>
+                    <button onclick="deleteRoom({{ room.id }})" class="border border-slate-600 px-3 py-1 rounded-md text-red-400 hover:bg-red-600/50 hover:border-red-500">Delete</button>
+                  </td>
+                </tr>
+                {% endif %}
               {% empty %}
               <tr class="border-b border-slate-700">
                 <td colspan="7" class="p-3 text-center text-slate-400">No rooms available. {% if not selected_floor %}Select a floor to view rooms.{% else %}Add your first room!{% endif %}</td>
@@ -176,8 +206,7 @@
                 <div class="flex items-center gap-2 mb-2">
                   <h3 class="text-base font-semibold text-white">Ratings</h3>
                   <div class="flex items-center gap-1">
-                    <div class="text-yellow-400">
-                      <i id="previewAverageStars" class="fas fa-star"></i>
+                    <div id="previewAverageStars" class="text-yellow-400">
                     </div>
                     <span id="previewAverageRating" class="text-sm font-semibold text-white">--</span>
                     <span id="previewRatingCount" class="text-xs text-slate-400">ratings</span>
@@ -208,6 +237,21 @@
                 }
             }
             return cookieValue;
+        }
+
+        function showCoordinatesDetail(roomId) {
+          // Fetch room data to show full coordinates
+          fetch(`/api/room/${roomId}/`)
+            .then(response => response.json())
+            .then(data => {
+              if (data.coordinates) {
+                const coords = data.coordinates;
+                alert(`Room ${data.number} Coordinates:\nX: ${coords.x || 'N/A'}\nY: ${coords.y || 'N/A'}\nZ: ${coords.z || 'N/A'}\nWidth: ${coords.width || 'N/A'}\nHeight: ${coords.height || 'N/A'}`);
+              } else {
+                alert('No coordinates available for this room');
+              }
+            })
+            .catch(error => console.error('Error:', error));
         }
 
         function editRoom(roomId) {
@@ -293,20 +337,20 @@
             }
 
             // Display ratings
-            const avgStars = Math.round(ratingsData.average_rating * 2) / 2;
-            let starHtml = '';
-            for (let i = 1; i <= 5; i++) {
-              if (i <= Math.floor(avgStars)) {
-                starHtml += '<i class="fas fa-star text-yellow-400"></i>';
-              } else if (i - avgStars < 1) {
-                starHtml += '<i class="fas fa-star-half-alt text-yellow-400"></i>';
-              } else {
-                starHtml += '<i class="far fa-star text-yellow-400"></i>';
-              }
-            }
-            document.getElementById('previewAverageStars').innerHTML = starHtml;
-            document.getElementById('previewAverageRating').textContent = avgStars.toFixed(1);
-            document.getElementById('previewRatingCount').textContent = `${ratingsData.total_ratings} rating${ratingsData.total_ratings !== 1 ? 's' : ''}`;
+            const avgRating = ratingsData.average_rating || 0;
+            const totalRatings = ratingsData.total_ratings || 0;
+            
+            // Generate star display - exactly 5 stars
+            const starHTML = Array(5).fill(0).map((_, i) => 
+              `<i class="fas fa-star text-yellow-400"></i>`
+            ).slice(0, Math.round(avgRating)).join('') +
+            Array(5).fill(0).map((_, i) => 
+              `<i class="far fa-star text-slate-500"></i>`
+            ).slice(0, 5 - Math.round(avgRating)).join('');
+            
+            document.getElementById('previewAverageStars').innerHTML = starHTML;
+            document.getElementById('previewAverageRating').textContent = avgRating.toFixed(1);
+            document.getElementById('previewRatingCount').textContent = `${totalRatings} rating${totalRatings !== 1 ? 's' : ''}`;
 
             // Display recent ratings
             const ratingsContainer = document.getElementById('previewRecentRatings');

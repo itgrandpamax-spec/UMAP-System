@@ -1591,9 +1591,14 @@ window.showRoomPreview = function(roomId) {
             // Use document fragment to batch DOM inserts
             const fragment = document.createDocumentFragment();
             
-            photosData.photos.forEach(photo => {
+            photosData.photos.forEach((photo, index) => {
                 const photoDiv = document.createElement('div');
-                photoDiv.className = 'relative group overflow-hidden rounded-lg';
+                let className = 'relative group overflow-hidden rounded-lg';
+                // Center 3rd photo on mobile if there are exactly 3 photos
+                if (photosData.photos.length === 3 && index === 2) {
+                    className += ' col-span-full sm:col-span-1 max-w-xs sm:max-w-none mx-auto sm:mx-0';
+                }
+                photoDiv.className = className;
                 photoDiv.innerHTML = `
                     <img src="${photo.url}" alt="${photo.caption}" class="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-300" loading="lazy">
                     <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-end p-2">

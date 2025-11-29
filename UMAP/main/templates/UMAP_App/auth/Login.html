@@ -224,13 +224,14 @@
 <div class="flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl shadow-lg md:flex-row mx-auto my-10 auth-container">
     <!-- Left Panel (Image Section for Desktop) -->
     <div class="hidden md:block w-1/2 bg-gray-200 side-image-container relative">
-        <!-- 🔧 Images change based on active tab: Login = umak-bldg, Signup = umak-bldg2 -->
-        <img id="authSideImage" src="{% static 'UMAP_App/images/umak-bldg.jpg' %}" alt="Campus view" />
+        <!-- Login Image -->
+        <img id="loginImage" class="side-image" src="{% static 'UMAP_App/images/umak-bldg.png' %}" alt="Campus view" />
+        <!-- Signup Image -->
+        <img id="signupImage" class="side-image hidden" src="{% static 'UMAP_App/images/umak-bldg2.png' %}" alt="Campus view" />
     </div>
 
     <!-- Right Panel (Form Section) -->
     <div class="w-full p-6 md:w-1/2 md:p-10 glass-card auth-form">
-        <img src="{% static 'UMAP_App/images/banner2.png' %}" alt="UMAP Logo" class="w-full rounded-lg shadow-lg mb-6" style="height: 60px; object-fit: cover;">
         <!-- Django Messages -->
         {% if messages %}
         <div class="mb-6 space-y-2">
@@ -823,10 +824,12 @@ document.addEventListener('DOMContentLoaded', function() {
         signupForm.classList.add('hidden');
         loginTab.classList.add('toggle-active');
         signupTab.classList.remove('toggle-active');
-        // Change side image to umak-bldg for login
-        const sideImage = document.getElementById('authSideImage');
-        if (sideImage) {
-            sideImage.src = "{% static 'UMAP_App/images/umak-bldg.jpg' %}";
+        // Switch to login image
+        const loginImg = document.getElementById('loginImage');
+        const signupImg = document.getElementById('signupImage');
+        if (loginImg && signupImg) {
+            loginImg.classList.remove('hidden');
+            signupImg.classList.add('hidden');
         }
     }
 
@@ -835,10 +838,12 @@ document.addEventListener('DOMContentLoaded', function() {
         loginForm.classList.add('hidden');
         signupTab.classList.add('toggle-active');
         loginTab.classList.remove('toggle-active');
-        // Change side image to umak-bldg2 for signup
-        const sideImage = document.getElementById('authSideImage');
-        if (sideImage) {
-            sideImage.src = "{% static 'UMAP_App/images/umak-bldg.jpg' %}";
+        // Switch to signup image
+        const loginImg = document.getElementById('loginImage');
+        const signupImg = document.getElementById('signupImage');
+        if (loginImg && signupImg) {
+            loginImg.classList.add('hidden');
+            signupImg.classList.remove('hidden');
         }
     }
 

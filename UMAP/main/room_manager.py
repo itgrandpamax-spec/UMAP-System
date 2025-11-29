@@ -11,7 +11,9 @@ class RoomNameManager:
     """Manages room name mapping from CSV files"""
     
     _room_names_cache = None
+    _room_coords_cache = None
     _csv_file_path = None
+    _coords_file_path = None
     
     @staticmethod
     def get_csv_file_path() -> Optional[str]:
@@ -34,6 +36,31 @@ class RoomNameManager:
         for path in csv_paths:
             if path and os.path.exists(path):
                 RoomNameManager._csv_file_path = path
+                return path
+        
+        return None
+    
+    @staticmethod
+    def get_coords_csv_file_path() -> Optional[str]:
+        """Get path to Room_coords.csv"""
+        if RoomNameManager._coords_file_path:
+            return RoomNameManager._coords_file_path
+        
+        # Try to get coordinates CSV from static/UMAP_App/csv folder
+        coords_paths = [
+            os.path.join(settings.BASE_DIR, 'main', 'static', 'UMAP_App', 'csv', 'Room_coords.csv'),
+            os.path.join(settings.BASE_DIR, 'static', 'UMAP_App', 'csv', 'Room_coords.csv'),
+        ]
+        
+        # Add STATICFILES_DIRS if available
+        if hasattr(settings, 'STATICFILES_DIRS') and settings.STATICFILES_DIRS:
+            coords_paths.append(
+                os.path.join(settings.STATICFILES_DIRS[0], 'UMAP_App', 'csv', 'Room_coords.csv')
+            )
+        
+        for path in coords_paths:
+            if path and os.path.exists(path):
+                RoomNameManager._coords_file_path = path
                 return path
         
         return None
@@ -93,7 +120,72 @@ class RoomNameManager:
         return room_names.get(room_number)
     
     @staticmethod
+    def load_room_coordinates() -> Dict[str, Dict[str, float]]:
+        """Load room coordinates from Room_coords.csv
+        
+        Returns a dictionary mapping room IDs to coordinate dictionaries:
+        {
+            'room_id': {'x': float, 'y': float, 'z': float},
+            ...
+        }
+        """
+        if RoomNameManager._room_coords_cache is not None:
+            return RoomNameManager._room_coords_cache
+        
+        room_coords = {}
+        coords_file = RoomNameManager.get_coords_csv_file_path()
+        
+        if not coords_file:
+            print("Warning: Room_coords.csv not found in expected locations")
+            RoomNameManager._room_coords_cache = {}
+            return room_coords
+        
+        try:
+            with open(coords_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if not row or not row.get('Room Id'):
+                        continue
+                    
+                    room_id = row.get('Room Id', '').strip()
+                    
+                    try:
+                        x = float(row.get('X', 0))
+                        y = float(row.get('Y', 0))
+                        z = float(row.get('Z', 0))
+                        
+                        if room_id:
+                            room_coords[room_id] = {
+                                'x': x,
+                                'y': y,
+                                'z': z
+                            }
+                    except (ValueError, TypeError):
+                        print(f"Warning: Could not parse coordinates for room {room_id}")
+                        continue
+            
+            print(f"✓ Loaded coordinates for {len(room_coords)} rooms from Room_coords.csv")
+            RoomNameManager._room_coords_cache = room_coords
+        
+        except Exception as e:
+            print(f"Error loading room coordinates from CSV: {str(e)}")
+            RoomNameManager._room_coords_cache = {}
+        
+        return room_coords
+    
+    @staticmethod
+    def get_room_coordinates(room_number: str) -> Optional[Dict[str, float]]:
+        """Get coordinates for a specific room number
+        
+        Returns: {'x': float, 'y': float, 'z': float} or None
+        """
+        room_coords = RoomNameManager.load_room_coordinates()
+        return room_coords.get(room_number)
+    
+    @staticmethod
     def clear_cache():
         """Clear the cache (useful for testing or after CSV updates)"""
         RoomNameManager._room_names_cache = None
+        RoomNameManager._room_coords_cache = None
         RoomNameManager._csv_file_path = None
+        RoomNameManager._coords_file_path = None

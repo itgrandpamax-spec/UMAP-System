@@ -1,0 +1,240 @@
+{% extends 'UMAP_App/Admin/Admin_Sidebar.html' %}
+{% load static %}
+
+{% block title %}Admin - Floor Plans{% endblock %}
+
+{% block content %}
+<style>
+    .floorplan-container {
+        background: #1a1a1a;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        border: 1px solid #334155;
+    }
+
+    .floorplan-svg {
+        width: 100%;
+        height: auto;
+        display: block;
+        background: #0f172a;
+    }
+
+    .building-card {
+        transition: all 0.3s ease;
+    }
+
+    .building-card:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+    }
+
+    .floor-accordion {
+        border: 1px solid #334155;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .floor-header {
+        padding: 1rem;
+        background: #1e293b;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s ease;
+    }
+
+    .floor-header:hover {
+        background: #334155;
+    }
+
+    .floor-header.active {
+        background: #3b82f6;
+    }
+
+    .floor-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+
+    .floor-content.active {
+        max-height: 2000px;
+        padding: 1rem;
+        background: #0f172a;
+    }
+
+    .floor-content.active + .floor-header {
+        border-top: 1px solid #334155;
+    }
+
+    .icon-transition {
+        transition: transform 0.3s ease;
+    }
+
+    .icon-transition.active {
+        transform: rotate(180deg);
+    }
+</style>
+
+<div class="min-h-screen bg-slate-900/50 p-4 md:p-6">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center gap-3 mb-2">
+                <i class="fas fa-map text-blue-400 text-2xl md:text-3xl"></i>
+                <h1 class="text-2xl md:text-4xl font-bold text-white">Floor Plans</h1>
+            </div>
+            <p class="text-slate-400 text-sm md:text-base">View all building floor plans with room layouts</p>
+        </div>
+
+        <!-- Legend -->
+        <div class="mb-8 p-6 bg-slate-800/50 rounded-2xl border border-slate-700/50">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="fas fa-key text-blue-400"></i> Room Type Legend
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
+                    <div class="w-6 h-6 rounded" style="background-color: #772C15;"></div>
+                    <span class="text-slate-300 text-sm">Fire Exits</span>
+                </div>
+                <div class="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
+                    <div class="w-6 h-6 rounded" style="background-color: #1D4427;"></div>
+                    <span class="text-slate-300 text-sm">Stairs/Elevators</span>
+                </div>
+                <div class="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
+                    <div class="w-6 h-6 rounded" style="background-color: #162433;"></div>
+                    <span class="text-slate-300 text-sm">Boys Comfort Room</span>
+                </div>
+                <div class="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
+                    <div class="w-6 h-6 rounded" style="background-color: #2F182D;"></div>
+                    <span class="text-slate-300 text-sm">Girls Comfort Room</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buildings List -->
+        <div id="buildingsContainer" class="space-y-6">
+            <!-- Buildings will be loaded here -->
+            <div class="text-center py-8">
+                <p class="text-slate-400">Loading floor plans...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadBuildingsAndFloorplans() {
+    try {
+        const container = document.getElementById('buildingsContainer');
+        
+        // Fetch all buildings and their floors
+        const response = await fetch('/api/buildings/');
+        const data = await response.json();
+        
+        if (!data.buildings || Object.keys(data.buildings).length === 0) {
+            container.innerHTML = '<div class="text-center py-8"><p class="text-slate-400">No buildings found</p></div>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        // Iterate through each building
+        for (const [buildingName, buildingData] of Object.entries(data.buildings)) {
+            const buildingCard = document.createElement('div');
+            buildingCard.className = 'building-card bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 md:p-8';
+            
+            // Building Header
+            const buildingHeader = document.createElement('div');
+            buildingHeader.className = 'mb-6 pb-4 border-b border-slate-700/50';
+            buildingHeader.innerHTML = `
+                <h2 class="text-2xl md:text-3xl font-bold text-white mb-1">${buildingName}</h2>
+                <p class="text-slate-400 text-sm">${buildingData.floors.length} floor(s)</p>
+            `;
+            buildingCard.appendChild(buildingHeader);
+            
+            // Floors Accordion
+            if (buildingData.floors && buildingData.floors.length > 0) {
+                const floorsContainer = document.createElement('div');
+                
+                buildingData.floors.forEach((floor, index) => {
+                    // Floor Header
+                    const floorHeader = document.createElement('div');
+                    floorHeader.className = 'floor-header';
+                    
+                    // Count rooms for this floor
+                    const floorRooms = buildingData.rooms.filter(r => r.floor === floor.name);
+                    
+                    floorHeader.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="text-white font-semibold">${floor.name}</span>
+                            <span class="text-xs text-slate-400 bg-slate-700/50 px-2 py-1 rounded">${floorRooms.length} rooms</span>
+                        </div>
+                        <i class="fas fa-chevron-down icon-transition text-slate-400"></i>
+                    `;
+                    
+                    // Floor Content
+                    const floorContent = document.createElement('div');
+                    floorContent.className = 'floor-content';
+                    floorContent.id = `floor-content-${floor.id}`;
+                    floorContent.innerHTML = '<p class="text-slate-400">Loading floorplan...</p>';
+                    
+                    // Load floorplan SVG
+                    fetch(`/api/floor/${floor.id}/`)
+                        .then(r => r.json())
+                        .then(response => {
+                            if (response.floor && response.floor.floorplan_url) {
+                                floorContent.innerHTML = `
+                                    <div class="floorplan-container">
+                                        <img src="${response.floor.floorplan_url}" alt="${floor.name} Floor Plan" class="floorplan-svg" loading="lazy">
+                                    </div>
+                                `;
+                            } else {
+                                floorContent.innerHTML = '<p class="text-slate-400 text-sm italic">No floor plan available</p>';
+                            }
+                        })
+                        .catch(err => {
+                            console.error(`Error loading floor ${floor.id}:`, err);
+                            floorContent.innerHTML = '<p class="text-slate-400 text-sm italic">Error loading floor plan</p>';
+                        });
+                    
+                    // Toggle accordion
+                    floorHeader.addEventListener('click', () => {
+                        floorHeader.classList.toggle('active');
+                        floorContent.classList.toggle('active');
+                        floorHeader.querySelector('.icon-transition').classList.toggle('active');
+                    });
+                    
+                    // Expand first floor by default
+                    if (index === 0) {
+                        floorHeader.classList.add('active');
+                        floorContent.classList.add('active');
+                        floorHeader.querySelector('.icon-transition').classList.add('active');
+                    }
+                    
+                    const floorAccordion = document.createElement('div');
+                    floorAccordion.className = 'floor-accordion';
+                    floorAccordion.appendChild(floorHeader);
+                    floorAccordion.appendChild(floorContent);
+                    
+                    floorsContainer.appendChild(floorAccordion);
+                });
+                
+                buildingCard.appendChild(floorsContainer);
+            } else {
+                buildingCard.innerHTML += '<p class="text-slate-400 text-sm italic">No floors available</p>';
+            }
+            
+            container.appendChild(buildingCard);
+        }
+    } catch (error) {
+        console.error('Error loading buildings and floor plans:', error);
+        document.getElementById('buildingsContainer').innerHTML = '<div class="text-center py-8"><p class="text-red-400">Error loading floor plans</p></div>';
+    }
+}
+
+// Load on page load
+document.addEventListener('DOMContentLoaded', loadBuildingsAndFloorplans);
+</script>
+{% endblock %}

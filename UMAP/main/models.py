@@ -99,6 +99,7 @@ class RoomProfile(models.Model):
     description = models.TextField(blank=True)
     images = models.JSONField(default=list)  # Store multiple images as list of URLs
     coordinates = models.JSONField(default=dict)
+    svg_room_id = models.CharField(max_length=50, blank=True, default="")  # Store original SVG room ID for CSV matching
 
     def __str__(self):
         return f"{self.name} ({self.number})"
@@ -142,6 +143,7 @@ class Schedule(models.Model):
     start = models.TimeField()
     end = models.TimeField()
     color = models.CharField(max_length=20, choices=COLOR_CHOICES, default='blue')
+    room_text = models.CharField(max_length=100, blank=True, default="")  # Store original room text from schedule
 
     def __str__(self):
         return f"{self.subject} ({self.course_code}) - {self.day}"

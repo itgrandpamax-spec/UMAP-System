@@ -68,19 +68,13 @@
 
           <!-- CSV Upload for Room Coordinates -->
           <div class="col-span-full">
-            <label class="text-sm text-gray-300">Import Rooms from CSV</label>
-            <p class="text-xs text-gray-400 mt-1 mb-2">Upload a CSV file with room data (Format: room_number, Name, x, y, z)</p>
-            <div class="mt-1">
-              {{ form.csv_file }}
-              <p class="text-xs text-gray-500 mt-1">1. Select a CSV file above 2. Click Preview & Import button</p>
-              <button type="button" id="import-btn" class="mt-2 px-3 py-1 bg-blue-600/20 text-blue-400 rounded-md hover:bg-blue-600/30 text-sm">
-                <i class="fas fa-upload mr-1"></i>Preview & Import Rooms
-              </button>
-            </div>
-            {% if form.csv_file.errors %}
-            <p class="text-red-300 text-xs mt-1">{{ form.csv_file.errors.0 }}</p>
-            {% endif %}
-            <div id="csv-status" class="mt-2 text-sm hidden"></div>
+            <label class="text-sm text-gray-300">Room Coordinates</label>
+            <p class="text-xs text-gray-400 mt-1 mb-2">Room coordinates are automatically imported from Room_coords.csv. Edit room coordinates below if needed.</p>
+            <button type="button" id="edit-coords-btn" 
+                    class="mt-2 px-3 py-1 bg-blue-600/20 text-blue-400 rounded-md hover:bg-blue-600/30 text-sm">
+              <i class="fas fa-edit mr-1"></i>Edit Room Coordinates
+            </button>
+            <div id="coords-status" class="mt-2 text-sm hidden"></div>
           </div>
 
           <!-- Floor Plan SVG Upload Field -->
@@ -395,87 +389,55 @@
             }
         }
 
-        // CSV Import Functions
-        async function previewAndImportRoomsFromCSV() {
-            console.log('previewAndImportRoomsFromCSV called');
-            const fileInput = document.getElementById('id_csv_file') || document.getElementById('csv_file');
-            const file = fileInput ? fileInput.files[0] : null;
+        // CSV Import Functions - REMOVED (using Room_coords.csv instead)
+        
+        // Edit Room Coordinates Function
+        function openEditCoordinatesModal() {
             const floorId = {{ form.instance.id|default:"null" }};
             
-            console.log('File:', file);
-            console.log('Floor ID:', floorId);
-            
-            if (!file) {
-                console.log('No file selected');
-                showMessage('csv-status', 'Please select a CSV file', 'error');
-                return;
-            }
-            
             if (!floorId) {
-                showMessage('csv-status', 'Please save the floor first before importing rooms', 'error');
+                alert('Please save the floor first before editing coordinates');
                 return;
             }
             
-            console.log('Starting CSV import for floor:', floorId);
+            const modalHTML = `
+                <div id="coords-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div class="bg-slate-800 rounded-lg p-6 max-w-4xl max-h-96 overflow-y-auto border border-gray-600">
+                        <h3 class="text-lg font-bold text-white mb-4">Edit Room Coordinates</h3>
+                        <div id="rooms-coords-table" class="text-xs text-gray-300">
+                            <p class="text-center text-gray-400">Loading rooms...</p>
+                        </div>
+                        <div class="flex gap-2 mt-4">
+                            <button onclick="saveCoordinatesChanges()" 
+                                    class="px-4 py-2 bg-green-600/20 text-green-400 rounded-md hover:bg-green-600/30">
+                                Save Changes
+                            </button>
+                            <button onclick="document.getElementById('coords-modal').remove()" 
+                                    class="px-4 py-2 bg-gray-600/20 text-gray-400 rounded-md hover:bg-gray-600/30">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
             
-            try {
-                const text = await file.text();
-                console.log('CSV content length:', text.length);
-                
-                // Detect separator (tab or comma)
-                const lines = text.trim().split('\n');
-                const firstLine = lines[0];
-                const separator = firstLine.includes('\t') ? '\t' : ',';
-                console.log('Detected separator:', separator === '\t' ? 'TAB' : 'COMMA');
-                
-                const rooms = [];
-                
-                // Parse CSV, skip header
-                for (let i = 1; i < lines.length; i++) {
-                    if (lines[i].trim() === '') continue;
-                    
-                    const cols = lines[i].split(separator).map(col => col.trim());
-                    
-                    if (cols.length >= 5) {
-                        const roomNumber = cols[0];
-                        const roomName = cols[1];
-                        const x = parseFloat(cols[2]);
-                        const y = parseFloat(cols[3]);
-                        const z = parseFloat(cols[4]);
-                        
-                        if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
-                            rooms.push({
-                                number: roomNumber,
-                                name: roomName,
-                                x: x,
-                                y: y,
-                                z: z
-                            });
-                        }
-                    }
-                }
-                
-                console.log('Parsed rooms:', rooms.length);
-                console.log('First room:', rooms[0]);
-                
-                if (rooms.length === 0) {
-                    showMessage('csv-status', 'No valid rooms found in CSV', 'error');
-                    return;
-                }
-                
-                showConfirmationDialog(rooms);
-                
-            } catch (error) {
-                console.error('Error reading CSV:', error);
-                showMessage('csv-status', 'Error reading CSV file: ' + error.message, 'error');
-            }
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            loadRoomCoordinatesData(floorId);
         }
         
-        function showConfirmationDialog(rooms) {
-            const modalHTML = `
-                <div id="confirmation-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div class="bg-slate-800 rounded-lg p-6 max-w-2xl max-h-96 overflow-y-auto border border-gray-600">
-                        <h3 class="text-lg font-bold text-white mb-4">Import ${rooms.length} Rooms</h3>
+        function loadRoomCoordinatesData(floorId) {
+            // Fetch rooms for this floor
+            fetch(`/api/floor-rooms/${floorId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const tableContainer = document.getElementById('rooms-coords-table');
+                    
+                    if (!data.rooms || data.rooms.length === 0) {
+                        tableContainer.innerHTML = '<p class="text-yellow-400">No rooms found for this floor</p>';
+                        return;
+                    }
+                    
+                    let html = `
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm text-gray-300">
                                 <thead class="text-xs text-gray-400 border-b border-gray-600">
@@ -488,102 +450,75 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${rooms.map(room => `
-                                        <tr class="border-b border-gray-700 hover:bg-slate-700/30">
-                                            <td class="px-2 py-1">${room.number}</td>
-                                            <td class="px-2 py-1">${room.name}</td>
-                                            <td class="px-2 py-1">${room.x.toFixed(2)}</td>
-                                            <td class="px-2 py-1">${room.y.toFixed(2)}</td>
-                                            <td class="px-2 py-1">${room.z.toFixed(2)}</td>
-                                        </tr>
-                                    `).join('')}
+                    `;
+                    
+                    data.rooms.forEach(room => {
+                        const coords = room.coordinates || {};
+                        html += `
+                            <tr class="border-b border-gray-700 hover:bg-slate-700/30" data-room-id="${room.id}">
+                                <td class="px-2 py-1">${room.number}</td>
+                                <td class="px-2 py-1">${room.name}</td>
+                                <td class="px-2 py-1"><input type="number" step="0.01" value="${coords.x || 0}" class="coord-x bg-slate-700/50 border border-gray-600 rounded px-1 w-20" /></td>
+                                <td class="px-2 py-1"><input type="number" step="0.01" value="${coords.y || 0}" class="coord-y bg-slate-700/50 border border-gray-600 rounded px-1 w-20" /></td>
+                                <td class="px-2 py-1"><input type="number" step="0.01" value="${coords.z || 0}" class="coord-z bg-slate-700/50 border border-gray-600 rounded px-1 w-20" /></td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
                                 </tbody>
                             </table>
                         </div>
-                        <div class="flex gap-2 mt-4">
-                            <button onclick="executeImportRooms(${JSON.stringify(rooms).replace(/"/g, '&quot;')})" 
-                                    class="px-4 py-2 bg-green-600/20 text-green-400 rounded-md hover:bg-green-600/30">
-                                Confirm Import
-                            </button>
-                            <button onclick="document.getElementById('confirmation-modal').remove()" 
-                                    class="px-4 py-2 bg-gray-600/20 text-gray-400 rounded-md hover:bg-gray-600/30">
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.body.insertAdjacentHTML('beforeend', modalHTML);
-        }
-        
-        async function executeImportRooms(rooms) {
-            const floorId = {{ form.instance.id|default:"null" }};
-            const fileInput = document.getElementById('id_csv_file') || document.getElementById('csv_file');
-            const file = fileInput ? fileInput.files[0] : null;
-            
-            console.log('Starting import - Floor ID:', floorId);
-            console.log('Rooms to import:', rooms.length);
-            console.log('First room:', rooms[0]);
-            
-            if (!floorId) {
-                showMessage('csv-status', 'Floor ID not found. Please refresh the page.', 'error');
-                return;
-            }
-            
-            try {
-                // Create FormData to send both file and room data
-                const formData = new FormData();
-                formData.append('floor_id', floorId);
-                formData.append('rooms', JSON.stringify(rooms));
-                if (file) {
-                    formData.append('csv_file', file);
-                }
-                
-                console.log('Sending import request with file...');
-                
-                const response = await fetch('{% url "import_rooms_csv" %}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: formData
+                    `;
+                    
+                    tableContainer.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading room coordinates:', error);
+                    document.getElementById('rooms-coords-table').innerHTML = 
+                        '<p class="text-red-400">Error loading rooms. Please refresh and try again.</p>';
                 });
-                
-                const data = await response.json();
-                console.log('Response status:', response.status);
-                console.log('Response data:', data);
-                
-                if (response.ok && data.status === 'success') {
-                    showMessage('csv-status', `Successfully imported ${data.count} rooms!`, 'success');
-                    document.getElementById('confirmation-modal')?.remove();
-                    
-                    // Reset file input
-                    const resetFileInput = document.getElementById('id_csv_file') || document.getElementById('csv_file');
-                    if (resetFileInput) resetFileInput.value = '';
-                    
-                    // Redirect after 1.5 seconds
-                    setTimeout(() => {
-                        window.location.href = "{% url 'admin_floor_list' %}";
-                    }, 1500);
-                } else {
-                    showMessage('csv-status', data.message || 'Import failed', 'error');
-                }
-            } catch (error) {
-                console.error('Error importing rooms:', error);
-                showMessage('csv-status', 'Error: ' + error.message, 'error');
-            }
         }
         
-        function showMessage(elementId, message, type) {
-            const element = document.getElementById(elementId);
-            element.classList.remove('hidden');
-            element.className = `mt-2 text-sm ${type === 'error' ? 'text-red-400' : 'text-green-400'}`;
-            element.textContent = message;
+        function saveCoordinatesChanges() {
+            const floorId = {{ form.instance.id|default:"null" }};
+            const updates = [];
             
-            setTimeout(() => {
-                element.classList.add('hidden');
-            }, 5000);
+            // Collect all coordinate changes
+            document.querySelectorAll('tr[data-room-id]').forEach(row => {
+                const roomId = row.getAttribute('data-room-id');
+                const x = parseFloat(row.querySelector('.coord-x').value);
+                const y = parseFloat(row.querySelector('.coord-y').value);
+                const z = parseFloat(row.querySelector('.coord-z').value);
+                
+                updates.push({
+                    room_id: roomId,
+                    coordinates: { x, y, z }
+                });
+            });
+            
+            // Send updates to backend
+            fetch(`/api/update-room-coordinates/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ updates })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Coordinates updated successfully');
+                    document.getElementById('coords-modal').remove();
+                } else {
+                    alert('Error updating coordinates: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving coordinates');
+            });
         }
 
         // SVG Preview Functions
@@ -675,11 +610,16 @@
             }, 5000);
         }
         
-        // Setup event listener for SVG preview button
+        // Setup event listeners
         document.addEventListener('DOMContentLoaded', function() {
             const previewBtn = document.getElementById('preview-svg-btn');
             if (previewBtn) {
                 previewBtn.addEventListener('click', previewSVGRooms);
+            }
+            
+            const editCoordsBtn = document.getElementById('edit-coords-btn');
+            if (editCoordsBtn) {
+                editCoordsBtn.addEventListener('click', openEditCoordinatesModal);
             }
             
             // Log checkbox state when form is submitted

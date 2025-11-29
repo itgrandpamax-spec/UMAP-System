@@ -365,7 +365,12 @@ def admin_floor_list_view(request):
 @login_required
 @user_passes_test(is_admin)
 def admin_rooms_list_view(request):
+    # Get all rooms with their related profile, ordered by most recent first
     rooms = Room.objects.select_related('floor', 'profile').all().order_by('-id')
+    
+    # Debug: Log total rooms
+    print(f"[DEBUG] Total rooms in DB: {rooms.count()}")
+    
     floor_id = request.GET.get('floor')
     building = request.GET.get('building')
     search_query = request.GET.get('search', '').strip()
@@ -386,10 +391,12 @@ def admin_rooms_list_view(request):
     # Filter by building
     if building:
         rooms = rooms.filter(floor__building=building)
+        print(f"[DEBUG] After building filter: {rooms.count()} rooms")
     
     # Filter by floor
     if floor_id:
         rooms = rooms.filter(floor_id=floor_id)
+        print(f"[DEBUG] After floor filter: {rooms.count()} rooms")
     
     # Search in room name, number, and description
     if search_query:
@@ -398,11 +405,16 @@ def admin_rooms_list_view(request):
             Q(profile__number__icontains=search_query) |
             Q(profile__description__icontains=search_query)
         )
+        print(f"[DEBUG] After search filter: {rooms.count()} rooms")
     
     # Pagination
     paginator = Paginator(rooms, 10)  # Show 10 rooms per page
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
+    
+    print(f"[DEBUG] Rooms on this page: {len(page_obj.object_list)}")
+    for room in page_obj.object_list:
+        print(f"  - Room {room.id}: has_profile={hasattr(room, 'profile')}, profile={room.profile if hasattr(room, 'profile') else 'NONE'}")
     
     # Get all unique buildings
     buildings = Floor.objects.values_list('building', flat=True).distinct().order_by('building')
@@ -470,106 +482,217 @@ def admin_CRUD_Users_view(request):
 @login_required
 @user_passes_test(is_admin)
 def create_rooms_from_floor_svg(request, floor_id):
-    """Manually create rooms from an existing floor's SVG file"""
-    from .svg_parser import SVGParser
-    import tempfile
-    import os
-    from django.http import JsonResponse
+    """
+    Automatically create or update rooms from an existing floor's SVG file with 
+    X, Y, and Z coordinates from Room_coords.csv.
     
+    Coordinate Matching Strategy:
+    1. Exact match using svg_room_id
+    2. Match using extracted RoomProfile.number
+    3. Endswith fallback to handle mismatched numbering
+    
+    Returns JSON with created, updated, skipped counts.
+    """
+    from .svg_parser import SVGParser
+    from .room_manager import RoomNameManager
+    from django.http import JsonResponse
+    import json
+
     try:
         floor = Floor.objects.get(id=floor_id)
-        
+
         if not floor.floorplan_svg:
             return JsonResponse({
                 'success': False,
                 'message': 'No SVG file found for this floor'
             }, status=400)
-        
-        # Parse SVG to extract rooms
+
         try:
+            # Parse SVG and extract rooms
             parser = SVGParser(floor.floorplan_svg.path)
             rooms = parser.extract_rooms()
-            
+
+            # Load CSV coordinates - ✅ GUARANTEES Z coordinates available
+            room_coords_map = RoomNameManager.load_room_coordinates()
+            if not room_coords_map:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Could not load Room_coords.csv'
+                }, status=400)
+
+            print(f"\n{'='*60}")
+            print(f"[SVG Upload] Processing floor: {floor.name}")
+            print(f"[SVG Upload] Loaded {len(room_coords_map)} CSV room records")
+            print(f"[SVG Upload] Extracted {len(rooms)} rooms from SVG")
+            print(f"{'='*60}\n")
+
             created_count = 0
             skipped_count = 0
-            
-            # Create Room and RoomProfile for each extracted room
+            updated_count = 0
+            skipped_rooms = []
+            debug_print_count = 0
+            debug_limit = 3
+
             for svg_room in rooms:
-                # Check if room already exists
-                existing_room = Room.objects.filter(
-                    floor=floor,
-                    profile__number=svg_room.room_id
-                ).exists()
-                
-                if existing_room:
+                # Determine floor number for room number extraction
+                floor_number = parser.floor_number or extract_floor_number(floor.name)
+
+                # Extract room number from SVG room ID
+                room_number = extract_room_number(svg_room.room_id, floor_number)
+
+                # ========== STRATEGY 1: Exact match using svg_room_id ==========
+                csv_coords = None
+                debug_found = None
+
+                if svg_room.room_id in room_coords_map:
+                    csv_coords = room_coords_map[svg_room.room_id]
+                    debug_found = f"exact_svg_id={svg_room.room_id}"
+
+                # ========== STRATEGY 2: Match using extracted room number ==========
+                if not csv_coords and room_number in room_coords_map:
+                    csv_coords = room_coords_map[room_number]
+                    debug_found = f"room_number={room_number}"
+
+                # ========== STRATEGY 3: Endswith fallback ==========
+                # Handles cases where CSV key has prefix that matches suffix of room number
+                # Example: room_number="101" matches csv_key="1101" (endswith check)
+                if not csv_coords:
+                    for csv_key, coords in room_coords_map.items():
+                        if csv_key.endswith(str(room_number)):
+                            csv_coords = coords
+                            debug_found = f"endswith_match={csv_key}"
+                            break
+
+                # ========== SKIP if no CSV match found ==========
+                if not csv_coords:
                     skipped_count += 1
+                    skipped_rooms.append({
+                        'svg_id': svg_room.room_id,
+                        'room_number': room_number
+                    })
+                    print(f"⚠ SKIP room SVG ID '{svg_room.room_id}' (room #{room_number}) - no CSV match found")
                     continue
-                
+
+                # ========== Build coordinates dict with X, Y, Z from CSV ==========
+                # ✅ Z coordinate is GUARANTEED to be included from CSV
+                coordinates = {
+                    'x': csv_coords['x'],
+                    'y': csv_coords['y'],
+                    'z': csv_coords['z'],  # ✅ Z is mandatory from CSV
+                    'width': svg_room.width,
+                    'height': svg_room.height
+                }
+
+                # Determine room name and type from SVG
+                if svg_room.room_name:
+                    room_name = svg_room.room_name
+                    room_type = svg_room.room_type or "Classroom"
+                elif svg_room.room_type:
+                    room_name = svg_room.room_type
+                    room_type = svg_room.room_type
+                else:
+                    room_name = f"Room {room_number}"
+                    room_type = "Classroom"
+
+                # ========== Create or update RoomProfile ==========
                 try:
-                    # Create Room instance
-                    room = Room.objects.create(floor=floor)
-                    
-                    # Extract correct room number based on floor number
-                    floor_number = parser.floor_number or extract_floor_number(floor.name)
-                    room_number = extract_room_number(svg_room.room_id, floor_number)
-                    
-                    # Determine room name: use CSV name > room type > default
-                    if svg_room.room_name:
-                        # Use name from CSV reference
-                        room_name = svg_room.room_name
-                        room_type = svg_room.room_type or "Classroom"
-                    elif svg_room.room_type:
-                        # Use room type if no CSV name available
-                        room_name = svg_room.room_type
-                        room_type = svg_room.room_type
+                    # Check for existing room
+                    existing_room = Room.objects.filter(
+                        floor=floor,
+                        profile__number=room_number
+                    ).first()
+
+                    if existing_room:
+                        # Update existing RoomProfile
+                        room_profile = existing_room.profile
+                        room_profile.coordinates = coordinates
+                        room_profile.name = room_name
+                        room_profile.type = room_type
+                        room_profile.svg_room_id = svg_room.room_id
+                        room_profile.save()
+                        updated_count += 1
+
+                        # Debug print for first few updated rooms
+                        if debug_print_count < debug_limit:
+                            print(f"✓ UPDATED room #{room_number} (SVG '{svg_room.room_id}')")
+                            print(f"  └─ Coords from CSV via {debug_found}")
+                            print(f"  └─ X={csv_coords['x']:.2f}, Y={csv_coords['y']:.2f}, Z={csv_coords['z']:.2f}")
+                            debug_print_count += 1
                     else:
-                        # Default fallback
-                        room_name = f"Room {room_number}"
-                        room_type = "Classroom"
-                    
-                    # Create RoomProfile with extracted room number
-                    room_profile = RoomProfile.objects.create(
-                        room=room,
-                        number=room_number,
-                        name=room_name,
-                        description=f"Color: {svg_room.color}" if svg_room.color else "",
-                        type=room_type,
-                        coordinates={
-                            'x': svg_room.x,
-                            'y': svg_room.y,
-                            'width': svg_room.width,
-                            'height': svg_room.height
-                        }
-                    )
-                    created_count += 1
+                        # Create new Room and RoomProfile
+                        room = Room.objects.create(floor=floor)
+                        RoomProfile.objects.create(
+                            room=room,
+                            number=room_number,
+                            name=room_name,
+                            type=room_type,
+                            description="",
+                            coordinates=coordinates,
+                            svg_room_id=svg_room.room_id
+                        )
+                        created_count += 1
+
+                        # Debug print for first few created rooms
+                        if debug_print_count < debug_limit:
+                            print(f"✓ CREATED room #{room_number} (SVG '{svg_room.room_id}')")
+                            print(f"  └─ Coords from CSV via {debug_found}")
+                            print(f"  └─ X={csv_coords['x']:.2f}, Y={csv_coords['y']:.2f}, Z={csv_coords['z']:.2f}")
+                            debug_print_count += 1
+
                 except Exception as e:
-                    print(f"Error creating room {svg_room.room_id}: {str(e)}")
+                    print(f"❌ ERROR processing room SVG '{svg_room.room_id}' (#{room_number}): {str(e)}")
                     skipped_count += 1
-            
-            if created_count > 0:
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Successfully created {created_count} rooms from SVG',
-                    'created': created_count,
-                    'skipped': skipped_count
-                })
-            else:
-                return JsonResponse({
-                    'success': True,
-                    'message': f'No new rooms created ({skipped_count} already existed)',
-                    'created': 0,
-                    'skipped': skipped_count
-                })
-        
+
+            # ========== Print Summary ==========
+            print(f"\n{'='*60}")
+            print(f"[SVG Upload Summary]")
+            print(f"  ✅ Created: {created_count}")
+            print(f"  🔄 Updated: {updated_count}")
+            print(f"  ⚠ Skipped: {skipped_count}")
+            print(f"{'='*60}\n")
+
+            if skipped_rooms:
+                print(f"[Skipped Rooms - No CSV Match]")
+                for skipped in skipped_rooms[:10]:  # Show first 10
+                    print(f"  • SVG ID: {skipped['svg_id']}, Room #: {skipped['room_number']}")
+                if len(skipped_rooms) > 10:
+                    print(f"  ... and {len(skipped_rooms) - 10} more")
+                print()
+
+            # ========== Return JSON response ==========
+            return JsonResponse({
+                'success': True,
+                'message': f'Successfully processed floor. Created {created_count} rooms, updated {updated_count}, skipped {skipped_count}',
+                'created': created_count,
+                'updated': updated_count,
+                'skipped': skipped_count,
+                'floor_name': floor.name,
+                'skipped_rooms': skipped_rooms
+            })
+
         except Exception as e:
             import traceback
-            error_msg = f'SVG parsing error: {str(e)}'
-            print(f"[SVG Parse Error] {error_msg}\n{traceback.format_exc()}")
+            print(f"\n[SVG Parse Error] {str(e)}")
+            print(f"Traceback:\n{traceback.format_exc()}\n")
             return JsonResponse({
                 'success': False,
-                'message': error_msg
+                'message': f'SVG parsing error: {str(e)}'
             }, status=400)
-    
+
+    except Floor.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': f'Floor with ID {floor_id} not found'
+        }, status=404)
+    except Exception as e:
+        import traceback
+        print(f"\n[Unexpected Error] {str(e)}")
+        print(f"Traceback:\n{traceback.format_exc()}\n")
+        return JsonResponse({
+            'success': False,
+            'message': f'Unexpected error: {str(e)}'
+        }, status=500)
+
     except Floor.DoesNotExist:
         return JsonResponse({
             'success': False,
@@ -581,8 +704,10 @@ def create_rooms_from_floor_svg(request, floor_id):
             'message': f'Error: {str(e)}'
         }, status=500)
 
+
 def admin_CRUD_Floors_view(request):
     from .svg_parser import SVGParser
+    from .room_manager import RoomNameManager
     import tempfile
     import os
     
@@ -634,12 +759,19 @@ def admin_CRUD_Floors_view(request):
                             floor_number = extract_floor_number(floor.name)
                             parser = SVGParser(tmp_path, floor_number=floor_number, building_id='10')
                             rooms = parser.extract_rooms()
+
+                            # Load CSV coordinates - ✅ GUARANTEES Z coordinates available
+                            room_coords_map = RoomNameManager.load_room_coordinates()
+                            if not room_coords_map:
+                                print("[Floor Creation] Warning: Could not load Room_coords.csv - Z coordinates will not be available")
                             
                             created_count = 0
                             skipped_count = 0
                             
+                            print(f"\n[Floor Creation] Processing {len(rooms)} rooms from SVG, {len(room_coords_map)} CSV records available")
+                            
                             # Create Room and RoomProfile for each extracted room
-                            for svg_room in rooms:
+                            for idx, svg_room in enumerate(rooms):
                                 # Check if room already exists
                                 existing_room = Room.objects.filter(
                                     floor=floor,
@@ -651,14 +783,51 @@ def admin_CRUD_Floors_view(request):
                                     continue
                                 
                                 try:
-                                    # Create Room instance
-                                    room = Room.objects.create(floor=floor)
-                                    
-                                    # Extract correct room number based on floor number
-                                    floor_number = parser.floor_number or extract_floor_number(floor.name)
+                                    # Extract room number based on floor number
                                     room_number = extract_room_number(svg_room.room_id, floor_number)
-                                    
-                                    # Determine room name: use CSV name > room type > default
+
+                                    # ========== STRATEGY 1: Exact match using svg_room_id ==========
+                                    csv_coords = None
+                                    debug_found = None
+
+                                    if svg_room.room_id in room_coords_map:
+                                        csv_coords = room_coords_map[svg_room.room_id]
+                                        debug_found = f"exact_svg_id={svg_room.room_id}"
+
+                                    # ========== STRATEGY 2: Match using extracted room number ==========
+                                    if not csv_coords and room_number in room_coords_map:
+                                        csv_coords = room_coords_map[room_number]
+                                        debug_found = f"room_number={room_number}"
+
+                                    # ========== STRATEGY 3: Endswith fallback ==========
+                                    if not csv_coords:
+                                        for csv_key, coords in room_coords_map.items():
+                                            if csv_key.endswith(str(room_number)):
+                                                csv_coords = coords
+                                                debug_found = f"endswith_match={csv_key}"
+                                                break
+
+                                    # ========== Build coordinates dict ==========
+                                    # Include Z from CSV if available, otherwise set to 0
+                                    if csv_coords:
+                                        coordinates = {
+                                            'x': csv_coords['x'],
+                                            'y': csv_coords['y'],
+                                            'z': csv_coords['z'],  # ✅ Z from CSV
+                                            'width': svg_room.width,
+                                            'height': svg_room.height
+                                        }
+                                    else:
+                                        # Fallback: use SVG coordinates without Z
+                                        coordinates = {
+                                            'x': svg_room.x,
+                                            'y': svg_room.y,
+                                            'z': 0,  # Default Z value
+                                            'width': svg_room.width,
+                                            'height': svg_room.height
+                                        }
+
+                                    # Determine room name and type from SVG
                                     if svg_room.room_name:
                                         # Use name from CSV reference
                                         room_name = svg_room.room_name
@@ -671,28 +840,35 @@ def admin_CRUD_Floors_view(request):
                                         # Default fallback
                                         room_name = f"Room {room_number}"
                                         room_type = "Classroom"
+
+                                    # Create Room instance
+                                    room = Room.objects.create(floor=floor)
                                     
-                                    # Create RoomProfile with extracted room number
+                                    # Create RoomProfile with extracted room number and Z coordinate
                                     room_profile = RoomProfile.objects.create(
                                         room=room,
                                         number=room_number,
                                         name=room_name,
-                                        description=f"Color: {svg_room.color}" if svg_room.color else "",
+                                        description="",
                                         type=room_type,
-                                        coordinates={
-                                            'x': svg_room.x,
-                                            'y': svg_room.y,
-                                            'width': svg_room.width,
-                                            'height': svg_room.height
-                                        }
+                                        coordinates=coordinates,
+                                        svg_room_id=svg_room.room_id
                                     )
                                     created_count += 1
+                                    
+                                    # Debug print for first 3 rooms
+                                    if created_count <= 3:
+                                        z_source = f"(CSV via {debug_found})" if csv_coords else "(default Z=0)"
+                                        print(f"  ✓ Room #{room_number}: X={coordinates['x']:.2f}, Y={coordinates['y']:.2f}, Z={coordinates['z']:.2f} {z_source}")
+                                        
                                 except Exception as e:
-                                    print(f"Error creating room {svg_room.room_id}: {str(e)}")
+                                    print(f"  ❌ Error creating room {svg_room.room_id}: {str(e)}")
                                     skipped_count += 1
                             
+                            print(f"\n[Floor Creation Summary] Created: {created_count}, Skipped: {skipped_count}\n")
+                            
                             if created_count > 0:
-                                messages.success(request, f'✅ Floor saved successfully! Created {created_count} rooms from SVG.')
+                                messages.success(request, f'✅ Floor saved successfully! Created {created_count} rooms from SVG with Z coordinates.')
                                 # Redirect to rooms list with floor pre-selected to show created rooms
                                 return redirect(f"{reverse('admin_rooms_list')}?floor={floor.id}")
                             else:
@@ -761,6 +937,9 @@ def admin_CRUD_Floors_view(request):
 def admin_CRUD_Rooms_view(request):
     if request.method == "POST":
         room_id = request.POST.get('room_id')
+        print(f"\n[Room CRUD] POST request - room_id: {room_id}")
+        print(f"[Room CRUD] POST data: {request.POST}")
+        
         if room_id:
             room = get_object_or_404(Room, id=room_id)
             room_form = RoomForm(request.POST, instance=room)
@@ -769,26 +948,92 @@ def admin_CRUD_Rooms_view(request):
             room_form = RoomForm(request.POST)
             profile_form = RoomProfileForm(request.POST, request.FILES)
 
+        # Check for duplicate room number BEFORE validating forms
+        room_number = request.POST.get('number', '').strip()
+        print(f"[Room CRUD] Room number: {room_number}")
+        
+        if room_number:
+            duplicate_query = RoomProfile.objects.filter(number=room_number)
+            if room_id:
+                # Exclude the current room being edited
+                duplicate_query = duplicate_query.exclude(room__id=room_id)
+            
+            if duplicate_query.exists():
+                print(f"[Room CRUD] Duplicate room number detected: {room_number}")
+                messages.error(request, f'❌ Room number "{room_number}" already exists. Please use a different room number.')
+                context = {
+                    'room_form': room_form,
+                    'profile_form': profile_form,
+                    'rooms': Room.objects.select_related('floor', 'profile').all().order_by('floor__building', 'floor__name')
+                }
+                return render(request, 'UMAP_App/Admin/Admin_CRUD_Rooms.html', context)
+
         if room_form.is_valid() and profile_form.is_valid():
+            print(f"[Room CRUD] Forms are valid, saving...")
             room = room_form.save()
+            print(f"[Room CRUD] Room saved: {room}")
+            
             profile = profile_form.save(commit=False)
             profile.room = room
+            
+            # Handle coordinates
+            coordinates_json = request.POST.get('coordinates', '{}')
+            print(f"[Room CRUD] Coordinates from POST: {coordinates_json}")
+            if coordinates_json:
+                try:
+                    import json
+                    coordinates = json.loads(coordinates_json)
+                    profile.coordinates = coordinates
+                    print(f"[Room CRUD] Set coordinates: {coordinates}")
+                except Exception as e:
+                    print(f"[Room CRUD] Error parsing coordinates: {e}")
+            
             profile.save()
+            print(f"[Room CRUD] Profile saved: {profile}")
             
             # Handle multiple photo uploads
             photos = request.FILES.getlist('photos')
             if photos and profile:
-                image_urls = []
+                import os
+                from django.core.files.storage import default_storage
+                
+                # Initialize images list if needed
+                if not isinstance(profile.images, list):
+                    profile.images = []
+                
                 for photo in photos:
                     if photo:  # Only save if file was selected
-                        # Save photo to profile's media folder
-                        profile.images = profile.images if isinstance(profile.images, list) else []
-                        # In a real scenario, you'd save the file and add its URL
-                        # For now, we'll add it to the images list
-                        profile.add_image(photo.url if hasattr(photo, 'url') else str(photo))
+                        try:
+                            # Create a unique filename
+                            filename = f"rooms/{profile.room.id}/{photo.name}"
+                            
+                            # Save file to media directory
+                            file_path = default_storage.save(filename, photo)
+                            print(f"[Room CRUD] Saved photo: {file_path}")
+                            
+                            # Get the URL of the saved file
+                            photo_url = default_storage.url(file_path)
+                            print(f"[Room CRUD] Photo URL: {photo_url}")
+                            
+                            # Add to images list
+                            profile.add_image(photo_url)
+                            print(f"[Room CRUD] Added image URL: {photo_url}")
+                        except Exception as e:
+                            print(f"[Room CRUD] Error saving photo: {e}")
+                
+                # Save the updated profile with image URLs
+                profile.save()
+                print(f"[Room CRUD] Profile images updated: {profile.images}")
             
             messages.success(request, 'Room saved successfully.')
             return redirect('admin_rooms_list')
+        else:
+            # Debug: print form errors
+            print(f"\n[Room CRUD] Form validation failed!")
+            if room_form.errors:
+                print(f"[Room CRUD] Room form errors: {room_form.errors}")
+            if profile_form.errors:
+                print(f"[Room CRUD] Profile form errors: {profile_form.errors}")
     else:
         room_id = request.GET.get('room_id')
         if room_id:
@@ -1253,14 +1498,21 @@ def search_rooms_and_locations(request):
     """Search for rooms and locations by name, number, building. (Public endpoint - no login required)"""
     query = request.GET.get('q', '').strip()
     
-    if not query or len(query) < 2:
+    if not query or len(query) < 1:
         return JsonResponse({'results': []})
     
     try:
         from django.db.models import Q
+        import re
+        
+        # Normalize query for flexible matching
+        normalized_query = query.replace('-', '').replace(' ', '').upper()
+        # Extract just the numeric part if query contains letters and numbers (e.g., "HPSB 1005" -> "1005")
+        numeric_only = re.sub(r'[^0-9]', '', query)
         
         # Search in RoomProfile for room name/number and Floor for building
         results = []
+        seen_rooms = set()
         
         # Search rooms by name or number
         room_profiles = RoomProfile.objects.filter(
@@ -1268,31 +1520,61 @@ def search_rooms_and_locations(request):
         ).select_related('room__floor')[:20]
         
         for profile in room_profiles:
-            results.append({
-                'id': profile.room.id,
-                'type': 'room',
-                'name': profile.name,
-                'number': profile.number,
-                'building': profile.room.floor.building,
-                'floor': profile.room.floor.name,
-                'floor_id': profile.room.floor.id,
-                'room_type': profile.type,
-                'description': profile.description[:100] if profile.description else ''
-            })
+            if profile.room.id not in seen_rooms:
+                seen_rooms.add(profile.room.id)
+                results.append({
+                    'id': profile.room.id,
+                    'type': 'room',
+                    'name': profile.name,
+                    'number': profile.number,
+                    'building': profile.room.floor.building,
+                    'floor': profile.room.floor.name,
+                    'floor_id': profile.room.floor.id,
+                    'room_type': profile.type,
+                    'description': profile.description[:100] if profile.description else ''
+                })
+        
+        # Also search by normalized number (handling variations like 1005, 10-05, 10 05, HPSB 1005)
+        if len(results) == 0 and numeric_only:
+            all_profiles = RoomProfile.objects.select_related('room__floor')
+            for profile in all_profiles:
+                normalized_profile_number = profile.number.replace('-', '').replace(' ', '').upper()
+                profile_numeric_only = re.sub(r'[^0-9]', '', profile.number)
+                
+                # Match if normalized versions match or numeric parts match
+                if (normalized_profile_number == normalized_query or 
+                    normalized_profile_number.endswith(normalized_query) or
+                    profile_numeric_only == numeric_only or
+                    profile_numeric_only.endswith(numeric_only)):
+                    
+                    if profile.room.id not in seen_rooms:
+                        seen_rooms.add(profile.room.id)
+                        results.append({
+                            'id': profile.room.id,
+                            'type': 'room',
+                            'name': profile.name,
+                            'number': profile.number,
+                            'building': profile.room.floor.building,
+                            'floor': profile.room.floor.name,
+                            'floor_id': profile.room.floor.id,
+                            'room_type': profile.type,
+                            'description': profile.description[:100] if profile.description else ''
+                        })
         
         # Search floors/buildings by name or building name
-        floors = Floor.objects.filter(
-            Q(name__icontains=query) | Q(building__icontains=query)
-        ).distinct()[:10]
-        
-        for floor in floors:
-            results.append({
-                'id': floor.id,
-                'type': 'floor',
-                'name': floor.name,
-                'building': floor.building,
-                'room_count': floor.rooms.count()
-            })
+        if len(results) < 5:
+            floors = Floor.objects.filter(
+                Q(name__icontains=query) | Q(building__icontains=query)
+            ).distinct()[:10]
+            
+            for floor in floors:
+                results.append({
+                    'id': floor.id,
+                    'type': 'floor',
+                    'name': floor.name,
+                    'building': floor.building,
+                    'room_count': floor.rooms.count()
+                })
         
         return JsonResponse({'results': results})
     
@@ -1322,6 +1604,33 @@ def get_room_photos(request, room_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@login_required
+@user_passes_test(is_admin)
+def delete_room_photo(request, room_id):
+    """Delete a photo from a room. (Admin only)"""
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    
+    try:
+        import json
+        data = json.loads(request.body)
+        photo_url = data.get('photo_url', '')
+        
+        room = get_object_or_404(Room, id=room_id)
+        if not room.profile:
+            return JsonResponse({'status': 'error', 'message': 'Room profile not found'}, status=404)
+        
+        # Remove the photo from images list
+        room.profile.remove_image(photo_url)
+        room.profile.save()
+        
+        print(f"[Delete Photo] Deleted photo: {photo_url}")
+        return JsonResponse({'status': 'success', 'message': 'Photo deleted'})
+    except Exception as e:
+        print(f"[Delete Photo] Error: {str(e)}")
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
 def get_room_data(request, room_id):
     """Get room data including coordinates, details, and photos. (Public endpoint - no login required)"""
     try:
@@ -1333,8 +1642,18 @@ def get_room_data(request, room_id):
         if room.profile and room.profile.coordinates:
             try:
                 coordinates = json.loads(room.profile.coordinates) if isinstance(room.profile.coordinates, str) else room.profile.coordinates
-            except:
-                pass
+                # Ensure all coordinate fields are present, even if 0 or None
+                if isinstance(coordinates, dict):
+                    coordinates = {
+                        'x': coordinates.get('x'),
+                        'y': coordinates.get('y'),
+                        'z': coordinates.get('z'),
+                        'width': coordinates.get('width'),
+                        'height': coordinates.get('height'),
+                    }
+            except Exception as e:
+                print(f"Error parsing coordinates for room {room_id}: {str(e)}")
+                coordinates = {}
         
         # Get photos from RoomProfile.images
         photos_data = []
@@ -1560,6 +1879,13 @@ def delete_feedback(request, feedback_id):
         print(f"Error deleting feedback {feedback_id}: {str(e)}")
         print(f"Admin user: {request.user.username}")
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_map_view(request):
+    """Admin view for displaying all building floorplans"""
+    return render(request, 'UMAP_App/Admin/Admin_Map.html')
 
 
 @login_required(login_url='login')

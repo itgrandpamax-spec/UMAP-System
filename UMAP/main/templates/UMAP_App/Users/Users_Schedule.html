@@ -324,6 +324,80 @@
     {% csrf_token %}
     <input id="uploadInput" type="file" name="schedule_pdf" accept="application/pdf" onchange="this.form.submit()">
   </form>
+
+  <!-- Room Preview Modal -->
+  <div id="roomPreviewModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] hidden justify-center items-start pt-8 md:pt-16 p-4 overflow-y-auto" style="display: none;">
+    <div class="bg-slate-900/95 rounded-2xl shadow-2xl border border-slate-700/50 w-full max-w-2xl max-h-[85vh] flex flex-col flex-shrink-0">
+        <!-- Modal Header -->
+        <div class="sticky top-0 bg-slate-900/95 border-b border-slate-700/50 p-4 md:p-6 flex justify-between items-start flex-shrink-0">
+            <div class="flex items-center gap-3 flex-1 pr-4">
+                <div class="flex-1">
+                    <h2 id="roomModalTitle" class="text-xl md:text-2xl font-bold text-white mb-1"></h2>
+                    <p id="roomModalSubtitle" class="text-xs md:text-sm text-blue-400 font-medium"></p>
+                </div>
+            </div>
+            <button onclick="closeRoomPreview()" class="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-700/50 rounded-lg flex-shrink-0">
+                <i class="fas fa-times text-lg md:text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Modal Content -->
+        <div class="p-4 md:p-6 overflow-y-auto flex-1">
+            <!-- Photo Gallery -->
+            <div id="roomPhotosContainer" class="mb-6">
+                <h3 class="text-base md:text-lg font-semibold text-white mb-3">Photos</h3>
+                <div id="roomPhotosGrid" class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                    <!-- Photos will be loaded here -->
+                </div>
+                <p id="noPhotosMessage" class="text-slate-400 text-sm italic">No photos available for this room</p>
+            </div>
+
+            <!-- Room Details -->
+            <div class="grid grid-cols-2 gap-3 md:gap-4 mb-6">
+                <div class="bg-slate-800/50 rounded-xl p-3 md:p-4 border border-slate-700/50">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Room Number</div>
+                    <div id="roomModalNumber" class="text-base md:text-lg font-bold text-white"></div>
+                </div>
+                <div class="bg-slate-800/50 rounded-xl p-3 md:p-4 border border-slate-700/50">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Room Type</div>
+                    <div id="roomModalType" class="text-base md:text-lg font-bold text-white"></div>
+                </div>
+                <div class="bg-slate-800/50 rounded-xl p-3 md:p-4 border border-slate-700/50 col-span-2">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Floor</div>
+                    <div id="roomModalFloor" class="text-base md:text-lg font-bold text-white"></div>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-6">
+                <h3 class="text-base md:text-lg font-semibold text-white mb-2">Description</h3>
+                <p id="roomModalDescription" class="text-slate-300 leading-relaxed text-sm md:text-base"></p>
+            </div>
+
+            <!-- Ratings Section -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-base md:text-lg font-semibold text-white">Ratings</h3>
+                    <div class="flex items-center gap-2">
+                        <span id="roomAverageStars" class="text-yellow-400 flex gap-0.5"></span>
+                        <span id="roomAverageRating" class="text-sm font-semibold text-white">--</span>
+                        <span id="roomRatingCount" class="text-xs text-slate-400">(0)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-2 gap-2 md:gap-3 pb-4">
+                <button onclick="locateRoom()" class="px-3 md:px-4 py-2 md:py-3 bg-slate-700/50 hover:bg-slate-700/70 text-slate-300 hover:text-white rounded-lg transition-all duration-150 font-medium flex items-center justify-center gap-2 text-sm md:text-base col-span-1">
+                    <i class="fas fa-location-dot"></i><span class="hidden md:inline">Locate</span>
+                </button>
+                <button onclick="closeRoomPreview()" class="px-3 md:px-4 py-2 md:py-3 bg-slate-700/50 hover:bg-slate-700/70 text-slate-300 hover:text-white rounded-lg transition-all duration-150 font-medium text-sm md:text-base col-span-1">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -433,9 +507,12 @@
           <div class="flex-1 pr-3">
             <div class="flex justify-between items-start">
               <h3 class="text-lg font-bold">${escapeHtml(s.course_code)}</h3>
-              <div class="flex gap-2">
+              <div class="flex gap-2 flex-wrap justify-end">
                 <button onclick="navigateToRoom('${escapeHtml(s.room)}')" class="px-2 py-1 rounded bg-blue-500 text-sm hover:bg-blue-600 transition-colors">
                   <i class="fas fa-location-arrow mr-1"></i>Navigate
+                </button>
+                <button onclick="checkRoom('${escapeHtml(s.room)}')" class="px-2 py-1 rounded bg-green-500 text-sm hover:bg-green-600 transition-colors">
+                  <i class="fas fa-eye mr-1"></i>Check Room
                 </button>
                 <form method="post" action="${window._DELETE_URL_TEMPLATE.replace('/0/', '/'+(s.id||'0')+'/')}" onsubmit="return confirm('Delete this class?')" class="inline">
                   {% csrf_token %}
@@ -682,6 +759,157 @@ document.addEventListener('DOMContentLoaded', function() {
       // Redirect to the map view
       window.location.href = "{% url 'default_view' %}";
     };
+
+    // Function to show room details in sidebar (preview)
+    window.checkRoom = function(roomNumber) {
+      if (!roomNumber || roomNumber === 'TBA') {
+        alert('Room information not available');
+        return;
+      }
+      
+      // Search for the room by number in the API
+      fetch(`/api/search-rooms/?q=${encodeURIComponent(roomNumber)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.results && data.results.length > 0) {
+            // Filter for room results (not floors)
+            const roomResults = data.results.filter(r => r.type === 'room');
+            if (roomResults.length > 0) {
+              const roomId = roomResults[0].id;
+              showRoomPreview(roomId);
+              return;
+            }
+          }
+          // If not found, try the number directly as an ID or search more broadly
+          alert(`Room "${roomNumber}" not found in system`);
+        })
+        .catch(err => {
+          console.error('Error searching for room:', err);
+          alert('Error loading room information');
+        });
+    };
+
+    // Room Preview Functions (copied from main.js)
+    window.showRoomPreview = function(roomId) {
+      const modal = document.getElementById('roomPreviewModal');
+      if (!modal) return;
+      
+      // Show modal immediately with loading state
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      modal.dataset.currentRoomId = roomId;
+      
+      // Fetch room data in parallel
+      Promise.all([
+        fetch(`/api/room/${roomId}/`).then(r => r.json()),
+        fetch(`/api/room/${roomId}/photos/`).then(r => r.json()),
+        fetch(`/api/room/${roomId}/ratings/`).then(r => r.json())
+      ])
+      .then(([roomData, photosData, ratingsData]) => {
+        // Helper functions
+        const setText = (id, value) => {
+          const elem = document.getElementById(id);
+          if (elem) elem.textContent = value;
+        };
+        
+        const setHTML = (id, value) => {
+          const elem = document.getElementById(id);
+          if (elem) elem.innerHTML = value;
+        };
+        
+        // Update text content
+        setText('roomModalTitle', roomData.name);
+        setText('roomModalSubtitle', `Room ${roomData.number} • ${roomData.floor || 'Unknown Floor'}`);
+        setText('roomModalNumber', roomData.number || 'N/A');
+        setText('roomModalType', roomData.type || 'Standard');
+        setText('roomModalFloor', roomData.floor || 'N/A');
+        setText('roomModalDescription', roomData.description || 'No description available');
+        
+        // Update ratings
+        const avgRating = ratingsData.average_rating || 0;
+        const totalRatings = ratingsData.total_ratings || 0;
+        setText('roomAverageRating', avgRating.toFixed(1));
+        setText('roomRatingCount', totalRatings);
+        
+        // Generate star display
+        const starHTML = Array(5).fill(0).map((_, i) => 
+          `<i class="fas fa-star text-yellow-400"></i>`
+        ).slice(0, Math.round(avgRating)).join('') +
+        Array(5).fill(0).map((_, i) => 
+          `<i class="far fa-star text-slate-500"></i>`
+        ).slice(0, 5 - Math.round(avgRating)).join('');
+        setHTML('roomAverageStars', starHTML);
+        
+        // Handle photos - use document fragment for better performance
+        const photosGrid = document.getElementById('roomPhotosGrid');
+        const noPhotosMsg = document.getElementById('noPhotosMessage');
+        
+        if (photosGrid && noPhotosMsg) {
+          photosGrid.innerHTML = '';
+          
+          if (photosData.photos && photosData.photos.length > 0) {
+            noPhotosMsg.style.display = 'none';
+            
+            // Use document fragment to batch DOM inserts
+            const fragment = document.createDocumentFragment();
+            
+            photosData.photos.forEach((photo, index) => {
+              const photoDiv = document.createElement('div');
+              let className = 'relative group overflow-hidden rounded-lg';
+              // Center 3rd photo on mobile if there are exactly 3 photos
+              if (photosData.photos.length === 3 && index === 2) {
+                className += ' col-span-full sm:col-span-1 max-w-xs sm:max-w-none mx-auto sm:mx-0';
+              }
+              photoDiv.className = className;
+              photoDiv.innerHTML = `
+                <img src="${photo.url}" alt="${photo.caption}" class="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-300" loading="lazy">
+                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-end p-2">
+                  <p class="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">${photo.caption}</p>
+                </div>
+              `;
+              fragment.appendChild(photoDiv);
+            });
+            
+            photosGrid.appendChild(fragment);
+          } else {
+            if (noPhotosMsg) noPhotosMsg.style.display = 'block';
+          }
+        }
+      })
+      .catch(err => {
+        console.error('Error loading room preview:', err);
+        alert('Error loading room information');
+      });
+    };
+
+    window.closeRoomPreview = function() {
+      const modal = document.getElementById('roomPreviewModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+      }
+    };
+
+    window.locateRoom = function() {
+      const roomId = document.getElementById('roomPreviewModal')?.dataset.currentRoomId;
+      if (!roomId) return;
+      
+      // Close preview
+      closeRoomPreview();
+      
+      // Navigate to map
+      sessionStorage.setItem('navigateToRoom', roomId);
+      window.location.href = "{% url 'default_view' %}";
+    };
+
+    // Close modal when clicking outside
+    document.getElementById('roomPreviewModal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'roomPreviewModal') {
+        closeRoomPreview();
+      }
+    });
 
     // small debug log
     console.log('Schedule manager initialized', manager);
