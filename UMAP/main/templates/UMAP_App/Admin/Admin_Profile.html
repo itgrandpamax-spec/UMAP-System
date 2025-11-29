@@ -26,7 +26,7 @@
               {% endif %}
             </div>
             <h2 class="text-xl font-semibold text-white mb-1">{{ user.get_full_name }}</h2>
-            <p class="text-sm text-gray-400">{{ user.profile.department }}</p>
+            <p class="text-sm text-gray-400">{{ user.profile.college.acronym }}</p>
             <p class="text-sm text-gray-400">{{ user.profile.year_level }}th Year</p>
           </div>
 
@@ -55,13 +55,12 @@
                     <p class="text-xs text-gray-500 mt-1">⚠️ Only admins can edit this field</p>
                   </div>
                   <div>
-                    <label class="text-xs text-gray-300 block mb-1">Department</label>
-                    <select name="department" class="w-full rounded-lg border border-slate-600 p-2.5 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none text-sm">
-                      <option value="IT" {% if user.profile.department == 'IT' %}selected{% endif %}>Information Technology</option>
-                      <option value="CS" {% if user.profile.department == 'CS' %}selected{% endif %}>Computer Science</option>
-                      <option value="Engineering" {% if user.profile.department == 'Engineering' %}selected{% endif %}>Engineering</option>
-                      <option value="Business" {% if user.profile.department == 'Business' %}selected{% endif %}>Business</option>
-                      <option value="Arts" {% if user.profile.department == 'Arts' %}selected{% endif %}>Arts</option>
+                    <label class="text-xs text-gray-300 block mb-1">College</label>
+                    <select name="college" class="w-full rounded-lg border border-slate-600 p-2.5 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none text-sm">
+                      <option value="">-- Select College --</option>
+                      {% for college in colleges %}
+                      <option value="{{ college.id }}" {% if user.profile.college.id == college.id %}selected{% endif %}>{{ college.acronym }} - {{ college.name }}</option>
+                      {% endfor %}
                     </select>
                   </div>
                 </div>

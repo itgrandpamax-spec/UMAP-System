@@ -60,7 +60,7 @@
               {% endif %}
             </div>
             <h2 class="text-xl font-semibold text-white mb-1">{{ user.get_full_name }}</h2>
-            <p class="text-sm text-gray-400">{{ user.profile.department }}</p>
+            <p class="text-sm text-gray-400">{{ user.profile.college.acronym }}</p>
             <p class="text-sm text-gray-400">{% if user.profile.year_level == 1 %}1st{% elif user.profile.year_level == 2 %}2nd{% elif user.profile.year_level == 3 %}3rd{% else %}4th{% endif %} Year</p>
           </div>
 
@@ -98,14 +98,8 @@
                     <input type="email" name="email" value="{{ user.email }}" class="w-full rounded-lg border border-slate-600 p-2.5 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none text-sm" readonly disabled>
                   </div>
                   <div>
-                    <label class="text-xs text-gray-300 block mb-1">Department</label>
-                    <select name="department" class="w-full rounded-lg border border-slate-600 p-2.5 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none text-sm">
-                      <option value="">-- Select Department --</option>
-                      <option value="IT" {% if user.profile.department == 'IT' %}selected{% endif %}>Information Technology</option>
-                      <option value="Engineering" {% if user.profile.department == 'Engineering' %}selected{% endif %}>Engineering</option>
-                      <option value="Business" {% if user.profile.department == 'Business' %}selected{% endif %}>Business</option>
-                      <option value="Arts" {% if user.profile.department == 'Arts' %}selected{% endif %}>Arts</option>
-                    </select>
+                    <label class="text-xs text-gray-300 block mb-1">College</label>
+                    <input type="text" value="{{ user.profile.college.acronym }} - {{ user.profile.college.name }}" class="w-full rounded-lg border border-slate-600 p-2.5 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none text-sm" readonly disabled>
                   </div>
                 </div>
 

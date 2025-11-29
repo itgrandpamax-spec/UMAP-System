@@ -33,11 +33,32 @@ class Admin(models.Model):
 
 
 
+# COLLEGE MODEL
+class College(models.Model):
+    acronym = models.CharField(max_length=20, unique=True, db_index=True)
+    name = models.CharField(max_length=200)
+    created_date = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['acronym']
+        verbose_name_plural = 'Colleges'
+    
+    def __str__(self):
+        return f"{self.acronym} - {self.name}"
+    
+    @staticmethod
+    def get_by_acronym(acronym):
+        """Get college by acronym (case-insensitive)"""
+        return College.objects.filter(acronym__iexact=acronym).first()
+
+
+
 # USER PROFILE
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     email = models.EmailField(unique=True)
     student_id = models.CharField(max_length=50, blank=True)
+    college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True, related_name='profiles')
     department = models.CharField(max_length=100, blank=True)
     year_level = models.PositiveIntegerField(null=True, blank=True)
     description = models.TextField(blank=True, max_length=100)

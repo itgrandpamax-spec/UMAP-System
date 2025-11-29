@@ -22,8 +22,8 @@ class AdminProfileAdmin(admin.ModelAdmin):
 # ---- PROFILE ADMIN ----
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'email', 'department', 'year_level')
-    search_fields = ('user__username', 'email', 'department')
+    list_display = ('id', 'user', 'email', 'college', 'year_level')
+    search_fields = ('user__username', 'email', 'college__acronym')
     ordering = ('id',)
 
 

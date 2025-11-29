@@ -1,21 +1,17 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import User, Profile, Floor, Room, RoomProfile, Schedule, Feedback
+from django.core.exceptions import ValidationError
+from .models import User, Profile, Floor, Room, RoomProfile, Schedule, Feedback, College
 
 class UserRegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True)
     first_name = forms.CharField(required=True)
     last_name = forms.CharField(required=True)
     student_id = forms.CharField(required=True)
-    department = forms.ChoiceField(
-        choices=[
-            ('', '-- Select Department --'),
-            ('IT', 'Information Technology'),
-            ('Engineering', 'Engineering'),
-            ('Business', 'Business'),
-            ('Arts', 'Arts')
-        ],
-        required=True
+    college = forms.CharField(
+        required=True,
+        label="College",
+        help_text="Enter your college acronym (e.g., CCIS, CBFS, CLAS)"
     )
     year_level = forms.ChoiceField(
         choices=[
@@ -43,6 +39,23 @@ class UserRegistrationForm(UserCreationForm):
                 'class': 'mt-1 w-full rounded-lg border border-slate-600 p-2 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none'
             })
 
+    def clean_college(self):
+        """Validate college acronym against database"""
+        college_acronym = self.cleaned_data.get('college', '').strip().upper()
+        
+        if not college_acronym:
+            raise ValidationError("College acronym is required.")
+        
+        # Check if college exists (case-insensitive)
+        college = College.get_by_acronym(college_acronym)
+        
+        if not college:
+            raise ValidationError(
+                f"Unknown college acronym '{college_acronym.upper()}'. Please enter a valid UMak college code."
+            )
+        
+        return college_acronym
+
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
@@ -52,11 +65,14 @@ class UserRegistrationForm(UserCreationForm):
         
         if commit:
             user.save()
+            # Get the college object
+            college = College.get_by_acronym(self.cleaned_data['college'])
+            
             # Create associated profile
             Profile.objects.create(
                 user=user,
                 email=self.cleaned_data['email'],
-                department=self.cleaned_data['department'],
+                college=college,
                 year_level=int(self.cleaned_data['year_level']),
                 student_id=self.cleaned_data['student_id']
             )
@@ -167,7 +183,7 @@ class AdminProfileForm(forms.ModelForm):
     """Form for admin to edit user profiles including email and student_id"""
     class Meta:
         model = Profile
-        fields = ['email', 'student_id', 'department', 'year_level', 'description', 'profile_pic']
+        fields = ['email', 'student_id', 'college', 'year_level', 'description', 'profile_pic']
         widgets = {
             'email': forms.EmailInput(attrs={
                 'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'
@@ -175,15 +191,9 @@ class AdminProfileForm(forms.ModelForm):
             'student_id': forms.TextInput(attrs={
                 'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'
             }),
-            'department': forms.Select(attrs={
+            'college': forms.Select(attrs={
                 'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'
-            }, choices=[
-                ('', '-- Select Department --'),
-                ('IT', 'Information Technology'),
-                ('Engineering', 'Engineering'),
-                ('Business', 'Business'),
-                ('Arts', 'Arts')
-            ]),
+            }),
             'year_level': forms.Select(attrs={
                 'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'
             }, choices=[
@@ -221,17 +231,11 @@ class UserProfileForm(forms.ModelForm):
     
     class Meta:
         model = Profile
-        fields = ['email', 'student_id', 'department', 'year_level', 'description', 'profile_pic']
+        fields = ['email', 'student_id', 'college', 'year_level', 'description', 'profile_pic']
         widgets = {
-            'department': forms.Select(attrs={
+            'college': forms.Select(attrs={
                 'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'
-            }, choices=[
-                ('', '-- Select Department --'),
-                ('IT', 'Information Technology'),
-                ('Engineering', 'Engineering'),
-                ('Business', 'Business'),
-                ('Arts', 'Arts')
-            ]),
+            }),
             'year_level': forms.Select(attrs={
                 'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'
             }, choices=[

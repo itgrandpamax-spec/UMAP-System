@@ -9,7 +9,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
-from .models import User, UserActivity, Profile
+from .models import User, UserActivity, Profile, College
 import json
 
 def get_client_ip(request):
@@ -186,7 +186,7 @@ def signup_ajax(request):
         # Basic validation
         required_fields = ['username', 'email', 'password1', 'password2', 
                          'first_name', 'last_name', 'student_id', 
-                         'department', 'year_level']
+                         'college', 'year_level']
         errors = {}
         
         for field in required_fields:
@@ -215,6 +215,12 @@ def signup_ajax(request):
         # Check if email exists
         if User.objects.filter(email=request.POST.get('email')).exists():
             errors['email'] = 'This email is already registered'
+        
+        # Validate college acronym
+        college_acronym = request.POST.get('college', '').strip().upper()
+        college = College.get_by_acronym(college_acronym)
+        if not college:
+            errors['college'] = f"Unknown college acronym '{college_acronym}'. Please enter a valid UMak college code."
             
         if errors:
             return JsonResponse({'status': 'error', 'errors': errors})
@@ -234,7 +240,7 @@ def signup_ajax(request):
                 user=user,
                 email=request.POST.get('email'),
                 student_id=request.POST.get('student_id'),
-                department=request.POST.get('department'),
+                college=college,
                 year_level=int(request.POST.get('year_level'))
             )
             
@@ -243,6 +249,7 @@ def signup_ajax(request):
                 'username': user.username,
                 'email': user.email,
                 'full_name': f"{user.first_name} {user.last_name}".strip(),
+                'college': college.acronym,
                 'type': 'Regular User',
                 'action': 'Account Created'
             }

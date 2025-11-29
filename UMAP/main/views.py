@@ -11,7 +11,7 @@ from .forms import (
     UserRegistrationForm, FloorForm, RoomForm, RoomProfileForm,
     AdminUserForm, AdminProfileForm, UserProfileForm
 )
-from .models import User, Floor, Room, RoomProfile, Profile, Schedule, UserActivity, Feedback, SavedLocation
+from .models import User, Floor, Room, RoomProfile, Profile, Schedule, UserActivity, Feedback, SavedLocation, College
 
 def is_admin(user):
     return user.is_staff or user.is_superuser
@@ -262,7 +262,7 @@ def admin_profile_view(request):
             user=request.user,
             defaults={
                 'email': request.user.email,
-                'department': 'IT',  # Default department
+                'college': None,  # Default college
                 'year_level': 1      # Default year
             }
         )
@@ -279,7 +279,9 @@ def admin_profile_view(request):
             request.user.save()
 
             # Update profile fields (student_id is read-only for regular users)
-            profile.department = request.POST.get('department', '')
+            college_id = request.POST.get('college')
+            if college_id:
+                profile.college_id = college_id
             profile.year_level = request.POST.get('year_level', 1)
             profile.description = request.POST.get('description', '')
 
@@ -314,7 +316,12 @@ def admin_profile_view(request):
             
             return redirect('admin_profile_view')
         
-        return render(request, 'UMAP_App/Admin/Admin_Profile.html', {'profile': profile})
+        context = {
+            'profile': profile,
+            'user': request.user,
+            'colleges': College.objects.all().order_by('acronym')
+        }
+        return render(request, 'UMAP_App/Admin/Admin_Profile.html', context)
 
     except Exception as e:
         messages.error(request, f'Error accessing profile: {str(e)}')
@@ -473,7 +480,8 @@ def admin_CRUD_Users_view(request):
     context = {
         'user_form': user_form,
         'profile_form': profile_form,
-        'users': User.objects.select_related('profile').all()
+        'users': User.objects.select_related('profile').all(),
+        'colleges': College.objects.all().order_by('acronym')
     }
     return render(request, 'UMAP_App/Admin/Admin_CRUD_Users.html', context)
 
@@ -1193,13 +1201,16 @@ def user_main_view(request):
 @login_required
 def user_profile_view(request):
     try:
+        # Get default college
+        default_college = College.objects.filter(acronym='CCIS').first()
+        
         # Ensure profile exists or create one
         profile, created = Profile.objects.get_or_create(
             user=request.user,
             defaults={
                 'email': request.user.email,
-                'department': 'IT',  # Default department
-                'year_level': 1      # Default year
+                'college': default_college,  # Default college
+                'year_level': 1              # Default year
             }
         )
 
@@ -1216,8 +1227,7 @@ def user_profile_view(request):
             request.user.save()
 
             # Update profile fields (email and student_id are permanent for security)
-            # These can only be changed by admins in the admin panel
-            profile.department = request.POST.get('department', '')
+            # College is also permanent for security - can only be changed by admins in the admin panel
             profile.year_level = request.POST.get('year_level', 1)
             profile.description = request.POST.get('description', '')
 
@@ -1261,7 +1271,10 @@ def user_profile_view(request):
             
             return redirect('user_profile')
         
-        return render(request, 'UMAP_App/Users/Users_Profile.html')
+        context = {
+            'colleges': College.objects.all().order_by('acronym')
+        }
+        return render(request, 'UMAP_App/Users/Users_Profile.html', context)
 
     except Exception as e:
         messages.error(request, f'Error accessing profile: {str(e)}')

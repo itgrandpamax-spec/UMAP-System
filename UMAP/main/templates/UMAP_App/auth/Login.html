@@ -395,17 +395,13 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-200">Department</label>
-                <select name="department" required 
-                    class="mt-1 w-full rounded-lg border border-slate-600 p-2.5 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none {% if signup_form.errors.department %}border-red-500{% endif %}" style="appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%222%22%3e%3cpolyline points=%226 9 12 15 18 9%22%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.5em 1.5em; padding-right: 2.5rem;">
-                    <option value="" disabled {% if not signup_form.department.value %}selected{% endif %}>-- Select Department --</option>
-                    <option value="IT" {% if signup_form.department.value == 'IT' %}selected{% endif %}>Information Technology</option>
-                    <option value="Engineering" {% if signup_form.department.value == 'Engineering' %}selected{% endif %}>Engineering</option>
-                    <option value="Business" {% if signup_form.department.value == 'Business' %}selected{% endif %}>Business</option>
-                    <option value="Arts" {% if signup_form.department.value == 'Arts' %}selected{% endif %}>Arts</option>
-                </select>
-                {% if signup_form.errors.department %}
-                <p class="mt-1 text-xs text-red-400">{{ signup_form.errors.department|join:", " }}</p>
+                <label class="block text-sm font-medium text-gray-200">College</label>
+                <input type="text" name="college" required placeholder="College Acronym (e.g., CCIS)" maxlength="20"
+                    value="{{ signup_form.college.value|default:'' }}"
+                    class="mt-1 w-full rounded-lg border border-slate-600 p-2 bg-slate-800/50 text-white focus:border-blue-500 focus:outline-none {% if signup_form.errors.college %}border-red-500{% endif %}" />
+                <p class="mt-1 text-xs text-gray-400">Enter your college acronym (e.g., CLAS, CCIS, CBFS, etc.)</p>
+                {% if signup_form.errors.college %}
+                <p class="mt-1 text-xs text-red-400">{{ signup_form.errors.college|join:", " }}</p>
                 {% endif %}
             </div>
 
