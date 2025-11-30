@@ -1,43 +1,4 @@
 // Building location data
-const buildingLocations = {
-    'HPSB': {
-        title: 'HPSB',
-        subtitle: 'High Performance Smart Building',
-        description: 'A state-of-the-art building featuring modern classrooms, computer laboratories, and advanced facilities. Known for its eco-friendly design and smart technology integration.',
-        floors: '4',
-        rooms: '30+',
-        locations: [
-            {
-                name: 'Computer Laboratory 1',
-                description: 'Advanced computer lab equipped with high-performance workstations and specialized software.',
-                floor: '2nd Floor',
-                room: '1009',
-                features: ['40 Workstations', 'Air-conditioned', 'Projector System'],
-                hasNavigation: true,
-                coordinates: {x: 120, y: 240}
-            },
-            {
-                name: 'Smart Classroom A',
-                description: 'Modern classroom with interactive displays and collaborative learning spaces.',
-                floor: '2nd Floor',
-                room: '1008',
-                features: ['Interactive Whiteboard', 'Video Conference Setup', 'Smart Lighting'],
-                hasNavigation: true,
-                coordinates: {x: 150, y: 240}
-            },
-            {
-                name: 'Research Laboratory',
-                description: 'Dedicated space for student research and specialized projects.',
-                floor: '3rd Floor',
-                room: '1010',
-                features: ['Research Equipment', 'Study Areas', 'Project Spaces'],
-                hasNavigation: true,
-                coordinates: {x: 180, y: 360}
-            }
-        ]
-    }
-};
-
 // Fetch additional building data from backend if available
 async function fetchBuildingData() {
     try {
