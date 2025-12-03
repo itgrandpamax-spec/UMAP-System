@@ -249,8 +249,26 @@ def admin_statistics(request):
             period = f'{hour:02d}:00 - {hour+1:02d}:00'
             time_ranges[period] = time_ranges.get(period, 0) + 1
         
+        # Convert to 12-hour format
+        def convert_to_12hour(time_str):
+            parts = time_str.split(' - ')
+            start_hour = int(parts[0][:2])
+            end_hour = int(parts[1][:2])
+            
+            def format_hour(h):
+                if h == 0:
+                    return '12 AM'
+                elif h < 12:
+                    return f'{h} AM'
+                elif h == 12:
+                    return '12 PM'
+                else:
+                    return f'{h-12} PM'
+            
+            return f'{format_hour(start_hour)} - {format_hour(end_hour)}'
+        
         context['common_time_ranges'] = sorted(
-            time_ranges.items(), 
+            [(convert_to_12hour(time), count) for time, count in time_ranges.items()],
             key=lambda x: x[1], 
             reverse=True
         )[:5]

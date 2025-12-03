@@ -1,5 +1,7 @@
 from django.http import HttpResponse, FileResponse
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect
+from django.contrib import messages
 from .models import Schedule
 from openpyxl import Workbook
 from datetime import datetime, timedelta
@@ -38,7 +40,8 @@ def export_schedule(request, format_type='excel'):
     schedules = sorted(schedules, key=lambda x: (_get_day_order(x.day), x.start))
     
     if not schedules:
-        return HttpResponse("No schedules found to export", status=404)
+        messages.error(request, "No schedules found to export. Please add some schedules first.")
+        return redirect('schedule_view')
     
     if format_type == 'excel':
         return _export_excel(schedules, request.user.username)
@@ -47,7 +50,8 @@ def export_schedule(request, format_type='excel'):
     elif format_type == 'ical':
         return _export_ical(schedules, request.user.username)
     else:
-        return HttpResponse("Unsupported format", status=400)
+        messages.error(request, "Unsupported export format.")
+        return redirect('schedule_view')
 
 def _export_excel(schedules, username):
     """Export schedules to Excel format"""
