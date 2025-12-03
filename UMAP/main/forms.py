@@ -155,6 +155,15 @@ class RoomProfileForm(forms.ModelForm):
 
 # Admin User Management Forms
 class AdminUserForm(forms.ModelForm):
+    password = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500',
+            'placeholder': 'Leave blank to keep current password'
+        }),
+        help_text='Leave blank to keep the current password. Enter a new password to change it.'
+    )
+    
     class Meta:
         model = User
         fields = ['username', 'email', 'first_name', 'last_name', 'type', 'is_active']
@@ -178,16 +187,22 @@ class AdminUserForm(forms.ModelForm):
                 'class': 'form-checkbox h-5 w-5 border-slate-600 bg-slate-800/50 text-blue-500'
             })
         }
+    
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        password = self.cleaned_data.get('password')
+        if password:
+            user.set_password(password)
+        if commit:
+            user.save()
+        return user
 
 class AdminProfileForm(forms.ModelForm):
-    """Form for admin to edit user profiles including email and student_id"""
+    """Form for admin to edit user profiles including student_id"""
     class Meta:
         model = Profile
-        fields = ['email', 'student_id', 'college', 'year_level', 'description', 'profile_pic']
+        fields = ['student_id', 'college', 'year_level', 'description', 'profile_pic']
         widgets = {
-            'email': forms.EmailInput(attrs={
-                'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'
-            }),
             'student_id': forms.TextInput(attrs={
                 'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'
             }),
@@ -210,16 +225,8 @@ class AdminProfileForm(forms.ModelForm):
         }
 
 class UserProfileForm(forms.ModelForm):
-    """Form for regular users to edit their own profile (email and student_id are permanent/uneditable)"""
-    # Display-only fields for email and student_id (not editable by regular users)
-    email = forms.EmailField(
-        disabled=True,
-        required=False,
-        widget=forms.EmailInput(attrs={
-            'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500',
-            'readonly': True
-        })
-    )
+    """Form for regular users to edit their own profile (student_id is permanent/uneditable)"""
+    # Display-only field for student_id (not editable by regular users)
     student_id = forms.CharField(
         disabled=True,
         required=False,
@@ -231,7 +238,7 @@ class UserProfileForm(forms.ModelForm):
     
     class Meta:
         model = Profile
-        fields = ['email', 'student_id', 'college', 'year_level', 'description', 'profile_pic']
+        fields = ['student_id', 'college', 'year_level', 'description', 'profile_pic']
         widgets = {
             'college': forms.Select(attrs={
                 'class': 'w-full border rounded-md p-2 mt-1 border-slate-600 bg-slate-800/50 text-white focus:border-blue-500'

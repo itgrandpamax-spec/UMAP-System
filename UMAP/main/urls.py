@@ -40,12 +40,14 @@ urlpatterns = [
     path('api/room/<int:room_id>/check-saved/', api_views.check_saved_location, name='check_saved_location'),
     path('api/room/<int:room_id>/track-view/', api_views.track_room_view, name='track_room_view'),
     path('api/user/recent/', api_views.get_user_recent, name='get_user_recent'),
+    path('api/ar/rooms/', api_views.get_ar_rooms_data, name='get_ar_rooms_data'),
     path('api/delete/roomimage/<int:image_id>/', views.delete_roomimage, name='delete_roomimage'),
     path('api/import-rooms-csv/', views.import_rooms_from_csv, name='import_rooms_csv'),
     path('api/search-rooms/', views.search_rooms_and_locations, name='search_rooms'),
 
     path('user_main/', views.user_main_view, name='user_main_view'),
     path('user_profile/', views.user_profile_view, name='user_profile'),
+    path('user_ar/', views.user_ar_view, name='user_ar_view'),
     path('user_saved/', views.saved_locations_view, name='saved_locations'),
     path('user_recent/', views.recent_locations_view, name='recent_locations'),
 
@@ -63,4 +65,5 @@ urlpatterns = [
     path('admin_ratings/', views.admin_ratings_view, name='admin_ratings'),
     path('admin_ratings/delete/<int:feedback_id>/', views.delete_feedback, name='delete_feedback'),
     path('admin_map/', views.admin_map_view, name='admin_map'),
+    path('admin_AR/', views.admin_AR_view, name='admin_AR'),
 ]

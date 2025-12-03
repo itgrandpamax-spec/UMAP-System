@@ -1729,7 +1729,17 @@ def delete_roomimage(request, image_id):
 def get_room_ratings(request, room_id):
     """Get all ratings for a room. (Public endpoint - no login required)"""
     try:
-        room = get_object_or_404(Room, id=room_id)
+        try:
+            room = Room.objects.get(id=room_id)
+        except Room.DoesNotExist:
+            # Return empty ratings instead of 404
+            return JsonResponse({
+                'total_ratings': 0,
+                'average_rating': 0,
+                'feedbacks': [],
+                'user_rating': None,
+                'is_authenticated': request.user.is_authenticated
+            })
         
         from .models import Feedback
         feedbacks = room.feedbacks.all().order_by('-creation_date')
@@ -1774,7 +1784,14 @@ def get_room_ratings(request, room_id):
         })
     except Exception as e:
         print(f"Error getting ratings: {str(e)}")
-        return JsonResponse({'error': str(e)}, status=500)
+        # Return 200 with empty data instead of 500
+        return JsonResponse({
+            'total_ratings': 0,
+            'average_rating': 0,
+            'feedbacks': [],
+            'user_rating': None,
+            'is_authenticated': request.user.is_authenticated
+        })
 
 
 def submit_room_rating(request, room_id):
@@ -2118,3 +2135,120 @@ def recent_locations_view(request):
             'has_recent': False
         })
 
+
+def admin_AR_view(request):
+    """Admin view for AR management with 3D room coordinates"""
+    try:
+        # Fetch all rooms with their profiles and coordinates
+        rooms = Room.objects.select_related('profile', 'floor').all()
+        
+        # Format room data for AR template with X, Y, Z coordinates
+        rooms_data = []
+        for room in rooms:
+            if not hasattr(room, 'profile') or not room.profile:
+                continue
+            
+            # Extract coordinates from room profile
+            coords = room.profile.coordinates or {}
+            
+            # Ensure we have X, Y, Z coordinates
+            x = coords.get('x', 0)
+            y = coords.get('y', 0)
+            z = coords.get('z', 0)
+            
+            room_data = {
+                'id': room.id,
+                'number': room.profile.number,
+                'name': room.profile.name,
+                'type': room.profile.type,
+                'description': room.profile.description or '',
+                'building': room.floor.building,
+                'floor': room.floor.name,
+                'floor_id': room.floor.id,
+                # ✅ Include all three coordinates for 3D positioning
+                'x': x,
+                'y': y,
+                'z': z,
+                'images': room.profile.get_images() if room.profile.get_images() else []
+            }
+            rooms_data.append(room_data)
+        
+        context = {
+            'rooms': rooms_data,
+            'total_rooms': len(rooms_data)
+        }
+        
+        return render(request, 'UMAP_App/Admin/Admin_TestAR.html', context)
+    
+    except Exception as e:
+        print(f"ERROR in admin_AR_view: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return render(request, 'UMAP_App/Admin/Admin_TestAR.html', {
+            'rooms': [],
+            'total_rooms': 0,
+            'error': str(e)
+        })
+
+
+@login_required
+def user_ar_view(request):
+    """User AR view for navigation between two rooms
+    
+    Displays:
+    - 3D model preview of the building
+    - Dropdown to select "Where are you?" (current location)
+    - Dropdown/button to select destination room
+    - Start AR session button to navigate from point A to point B
+    """
+    try:
+        # Fetch all rooms with their profiles and coordinates
+        rooms = Room.objects.select_related('profile', 'floor').all()
+        
+        # Format room data for AR template with X, Y, Z coordinates
+        rooms_data = []
+        for room in rooms:
+            if not hasattr(room, 'profile') or not room.profile:
+                continue
+            
+            # Extract coordinates from room profile
+            coords = room.profile.coordinates or {}
+            
+            # Ensure we have X, Y, Z coordinates
+            x = coords.get('x', 0)
+            y = coords.get('y', 0)
+            z = coords.get('z', 0)
+            
+            room_data = {
+                'id': room.id,
+                'number': room.profile.number,
+                'name': room.profile.name,
+                'type': room.profile.type,
+                'description': room.profile.description or '',
+                'building': room.floor.building,
+                'floor': room.floor.name,
+                'floor_id': room.floor.id,
+                # ✅ Include all three coordinates for 3D positioning
+                'x': x,
+                'y': y,
+                'z': z,
+                'images': room.profile.get_images() if room.profile.get_images() else []
+            }
+            rooms_data.append(room_data)
+        
+        context = {
+            'rooms': rooms_data,
+            'total_rooms': len(rooms_data)
+        }
+        
+        return render(request, 'UMAP_App/Users/User_AR.html', context)
+    
+    except Exception as e:
+        print(f"ERROR in user_ar_view: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return render(request, 'UMAP_App/Users/User_AR.html', {
+            'rooms': [],
+            'total_rooms': 0,
+            'error': str(e)
+        })

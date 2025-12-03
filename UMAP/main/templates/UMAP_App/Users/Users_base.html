@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="icon" type="image/png" href="{% static 'UMAP_App/images/logo.png' %}">
@@ -24,6 +25,16 @@
   </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="{% static 'UMAP_App/css/User_styles.css' %}">
+  
+  <!-- Import Maps for Three.js ES Modules -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
   <style>
     path, rect {
       cursor: pointer;
@@ -370,6 +381,9 @@
   <div class="ptr-indicator">
     <i class="fas fa-sync fa-spin text-blue-400"></i>
   </div>
+
+  <!-- SVG Manipulator (Zoom & Pan) -->
+  <script src="{% static 'UMAP_App/js/UI/SVGManipulator.js' %}"></script>
 
   <!-- Mobile Interactions -->
   <script src="{% static 'UMAP_App/js/UI/mobile-interactions.js' %}"></script>

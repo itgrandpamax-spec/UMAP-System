@@ -1,11 +1,18 @@
-// Building location data
+// Building location data - initialized globally
+window.buildingLocations = window.buildingLocations || {};
+
 // Fetch additional building data from backend if available
 async function fetchBuildingData() {
     try {
         const response = await fetch('/api/buildings/');
         const data = await response.json();
         
-        if (data.status === 'success') {
+        if (data.status === 'success' && data.buildings) {
+            // Ensure buildingLocations exists
+            if (!window.buildingLocations) {
+                window.buildingLocations = {};
+            }
+            
             Object.values(data.buildings).forEach(building => {
                 const buildingObj = {
                     title: building.name,
@@ -23,20 +30,22 @@ async function fetchBuildingData() {
                 };
                 
                 // Add with building name as key
-                buildingLocations[building.name] = buildingObj;
-                
-                // Also add with common SVG ID patterns to ensure all buildings work
-                buildingLocations[building.name.toLowerCase()] = buildingObj;
-                buildingLocations[building.name.toUpperCase()] = buildingObj;
-                
-                // Add with "Building" prefix variations (e.g., "Building1" -> map to actual building)
-                const simpleName = building.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-                if (simpleName) {
-                    buildingLocations[simpleName] = buildingObj;
+                if (window.buildingLocations) {
+                    window.buildingLocations[building.name] = buildingObj;
+                    
+                    // Also add with common SVG ID patterns to ensure all buildings work
+                    window.buildingLocations[building.name.toLowerCase()] = buildingObj;
+                    window.buildingLocations[building.name.toUpperCase()] = buildingObj;
+                    
+                    // Add with "Building" prefix variations (e.g., "Building1" -> map to actual building)
+                    const simpleName = building.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                    if (simpleName) {
+                        window.buildingLocations[simpleName] = buildingObj;
+                    }
                 }
             });
             
-            console.log('Building data loaded:', buildingLocations);
+            console.log('Building data loaded:', window.buildingLocations);
         } else {
             console.error('Error fetching building data:', data.message);
         }
@@ -44,6 +53,13 @@ async function fetchBuildingData() {
         console.error('Error fetching building data:', error);
     }
 }
+
+// Call fetchBuildingData after DOM is ready to avoid race conditions
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof fetchBuildingData === 'function') {
+        fetchBuildingData().catch(err => console.error('Failed to fetch building data:', err));
+    }
+});
 
 function createLocationCard(location) {
     if (!location.features) return '';
@@ -175,201 +191,7 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// SVG Map Event Handlers
-document.addEventListener('DOMContentLoaded', () => {
-    // Get the appropriate SVG based on screen size
-    const isMobileView = window.innerWidth < 768;
-    const svg = document.getElementById(isMobileView ? 'umapSVG-mobile' : 'umapSVG');
-    const fogOverlay = document.getElementById('fogOverlay');
-    const zoomBtn = document.getElementById('zoomBtn');
-    
-    if (!svg) {
-        console.error('SVG element not found');
-        return;
-    }
-    
-    // Prevent pull to refresh on mobile
-    document.body.addEventListener('touchmove', function(e) {
-        const touchY = e.touches[0].clientY;
-        if (window.scrollY === 0 && touchY > 0) {
-            e.preventDefault();
-        }
-    }, { passive: false });
-
-    // Add touch handling to all scrollable containers
-    const scrollableContainers = document.querySelectorAll('.overflow-y-auto, .overflow-auto, #locationSidebar');
-    scrollableContainers.forEach(container => {
-        container.addEventListener('touchstart', function(e) {
-            this.allowUp = this.scrollTop > 0;
-            this.allowDown = this.scrollTop < this.scrollHeight - this.clientHeight;
-            this.lastY = e.touches[0].clientY;
-        });
-
-        container.addEventListener('touchmove', function(e) {
-            const up = e.touches[0].clientY > this.lastY;
-            const down = !up;
-            this.lastY = e.touches[0].clientY;
-
-            if ((up && this.allowUp) || (down && this.allowDown)) {
-                e.stopPropagation();
-            } else {
-                e.preventDefault();
-            }
-        }, { passive: false });
-    });
-    
-    // Function to initialize SVG interactivity
-    const initializeSVG = () => {
-        try {
-            const svgDoc = svg.contentDocument;
-            if (!svgDoc) {
-                console.warn('SVG document not accessible yet');
-                return false;
-            }
-            
-            const svgElement = svgDoc.querySelector('svg');
-            if (!svgElement) {
-                console.warn('SVG element not found in document');
-                return false;
-            }
-        
-            // Make SVG responsive
-            svgElement.style.width = '100%';
-            svgElement.style.height = '100%';
-            svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-
-            // Find all building elements with various possible ID patterns
-            const buildings = Array.from(svgDoc.querySelectorAll('path[id], polygon[id], g[id]')).filter(el => {
-                const id = el.id.toLowerCase();
-                return id.includes('building') || 
-                       id.includes('bldg') || 
-                       id === 'hpsb' || 
-                       id === 'admin' || 
-                       id === 'oval' || 
-                       id.match(/^building\d+$/);
-            });
-            
-            // Log found buildings for debugging
-            console.log('Found buildings:', buildings.map(b => b.id));
-            
-            // Initialize building data
-            fetchBuildingData();
-            
-            console.log('Total buildings found:', buildings.length);
-            console.log('Building elements:', buildings);
-            
-            buildings.forEach(building => {
-                // Set up building interactions
-                const defaultStyle = window.getComputedStyle(building);
-                const defaultFill = defaultStyle.fill;
-                
-                // Make building interactive
-                building.style.cursor = 'pointer';
-                building.style.transition = 'all 0.3s ease';
-                
-                // Store original fill color
-                building.dataset.originalFill = defaultFill;
-                
-                const highlight = () => {
-                    if (!building.classList.contains('selected')) {
-                        building.style.fill = 'rgba(59, 130, 246, 0.5)';
-                        building.style.filter = 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.5))';
-                    }
-                };
-                
-                const unhighlight = () => {
-                    if (!building.classList.contains('selected')) {
-                        building.style.fill = building.dataset.originalFill;
-                        building.style.filter = '';
-                    }
-                };
-
-                // Handle both mouse and touch events
-                building.addEventListener('mouseenter', highlight);
-                building.addEventListener('mouseleave', unhighlight);
-                building.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    highlight();
-                });
-                
-                const handleBuildingSelect = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    console.log('Building clicked:', building.id);
-                    
-                    // Reset previous selections
-                    buildings.forEach(b => {
-                        b.classList.remove('selected');
-                        b.style.fill = b.dataset.originalFill || '';
-                        b.style.filter = '';
-                    });
-                    
-                    // Set this building as selected
-                    building.classList.add('selected');
-                    building.style.fill = 'rgba(255, 152, 0, 0.7)';
-                    building.style.filter = 'drop-shadow(0 0 12px rgba(255, 152, 0, 0.5))';
-                    
-                    // Calculate panel position for non-mobile
-                    let position = null;
-                    if (window.innerWidth > 768) {
-                        const rect = building.getBoundingClientRect();
-                        position = {
-                            x: rect.left + (rect.width / 2),
-                            y: rect.top + (rect.height / 2)
-                        };
-                    }
-                    
-                    // Show building info panel
-                    const buildingName = building.id.toLowerCase();
-                    const displayName = buildingName
-                        .replace(/^(building|bldg)/, 'Building ')
-                        .replace(/^hpsb$/, 'HPSB')
-                        .replace(/^admin$/, 'ADMIN')
-                        .replace(/^oval$/, 'Oval');
-                        
-                    showBuildingPanel({
-                        id: building.id,
-                        name: displayName,
-                        position: position
-                    });
-                };
-
-                building.addEventListener('click', handleBuildingSelect);
-                building.addEventListener('touchend', handleBuildingSelect);
-            });
-
-            // Enable panning with drag threshold to avoid interfering with clicks
-            // Dragging functionality is disabled for SVG
-            // Users can still interact with buildings and other elements normally
-            
-            return true;
-        } catch (error) {
-            console.error('Error initializing SVG:', error);
-            return false;
-        }
-    };
-    
-    // Try to initialize immediately
-    if (!initializeSVG()) {
-        // If not ready, attach load event listener
-        svg.addEventListener('load', () => {
-            console.log('SVG load event fired, initializing...');
-            initializeSVG();
-        });
-        
-        // Also try again after a short delay as fallback
-        setTimeout(() => {
-            if (!initializeSVG()) {
-                console.warn('SVG still not ready after timeout, will try again');
-                setTimeout(initializeSVG, 1000);
-            }
-        }, 500);
-    } else {
-        console.log('SVG initialized immediately');
-    }
-});
-
+// SVG initialization is now handled by SVGManipulator.js
 // Building Panel Functions
 function showBuildingPanel(data) {
     const buildingId = data.id;
@@ -595,7 +417,7 @@ window.showFloorsPanel = function(buildingName) {
                             if (roomsInFloor.length > 0) {
                                 Promise.all(roomsInFloor.map(room => 
                                     fetch(`/api/room/${room.id}/ratings/`)
-                                        .then(r => r.json())
+                                        .then(r => r.ok ? r.json() : Promise.resolve({ average_rating: 0, total_ratings: 0 }))
                                         .catch(() => ({ average_rating: 0, total_ratings: 0 }))
                                 ))
                                 .then(ratings => {
@@ -1040,7 +862,7 @@ window.showFloorPlanView = function(floorId, floorName, buildingName) {
                                 
                                 // Fetch and display ratings for this room
                                 fetch(`/api/room/${room.id}/ratings/`)
-                                    .then(r => r.json())
+                                    .then(r => r.ok ? r.json() : Promise.resolve({ average_rating: 0, total_ratings: 0 }))
                                     .then(data => {
                                         const ratingDiv = document.getElementById(`room-rating-${room.id}`);
                                         if (ratingDiv) {
@@ -1277,7 +1099,7 @@ document.addEventListener("DOMContentLoaded", () => {
               if (result.type === 'room') {
                 // Fetch ratings for this room
                 fetch(`/api/room/${result.id}/ratings/`)
-                  .then(r => r.json())
+                  .then(r => r.ok ? r.json() : Promise.resolve({ average_rating: 0, total_ratings: 0 }))
                   .then(ratingData => {
                     const avgRating = ratingData.average_rating || 0;
                     const totalRatings = ratingData.total_ratings || 0;
@@ -1474,9 +1296,9 @@ window.showRoomPreview = function(roomId) {
     
     // Fetch room data, photos, and ratings in parallel for better performance
     Promise.all([
-        fetch(`/api/room/${roomId}/`).then(r => r.json()),
-        fetch(`/api/room/${roomId}/photos/`).then(r => r.json()),
-        fetch(`/api/room/${roomId}/ratings/`).then(r => r.json())
+        fetch(`/api/room/${roomId}/`).then(r => r.ok ? r.json() : Promise.resolve({})),
+        fetch(`/api/room/${roomId}/photos/`).then(r => r.ok ? r.json() : Promise.resolve({})),
+        fetch(`/api/room/${roomId}/ratings/`).then(r => r.ok ? r.json() : Promise.resolve({ total_ratings: 0, average_rating: 0, feedbacks: [] }))
     ])
     .then(([roomData, photosData, ratingsData]) => {
         // Track room view with complete room data for guests
@@ -1746,6 +1568,360 @@ window.closeRoomPreview = function() {
     document.body.style.overflow = 'auto';
 }
 
+// AR Navigation Modal Functions
+let arAllRooms = [];
+let arSelectedCurrentRoom = null;
+let arSelectedDestinationRoom = null;
+
+window.navigateToARWithRoom = function() {
+    try {
+        // Get the currently displayed room from the modal
+        const roomTitle = document.getElementById('roomModalTitle');
+        const roomNumber = document.getElementById('roomModalNumber');
+        
+        if (!roomTitle || !roomNumber) {
+            alert('Room information not available');
+            return;
+        }
+        
+        // Get the full room data if available
+        const roomId = roomTitle.dataset.roomId || null;
+        const roomType = document.getElementById('roomModalType')?.textContent || 'Unknown';
+        const roomFloor = document.getElementById('roomModalFloor')?.textContent || 'Unknown';
+        const roomBuilding = document.getElementById('roomModalBuilding')?.textContent || 'Unknown';
+        
+        const roomNumberText = roomNumber.textContent;
+        
+        // Store the clicked room as destination in sessionStorage for User_AR.html page
+        const roomData = {
+            id: roomId,
+            number: roomNumberText,
+            type: roomType,
+            floor: roomFloor,
+            building: roomBuilding
+        };
+        sessionStorage.setItem('ar_destination_room', JSON.stringify(roomData));
+        
+        // Close room preview modal
+        window.closeRoomPreview();
+        
+        // Open AR modal and pre-select the destination room
+        if (window.openARModal && window.preSelectARDestinationRoom) {
+            window.openARModal();
+            window.preSelectARDestinationRoom();
+        } else {
+            console.error('AR modal functions not loaded. Make sure UserAR.js is included.');
+            alert('AR system not ready. Please refresh the page.');
+        }
+        
+    } catch (error) {
+        console.error('Error navigating to AR:', error);
+        alert('Error navigating to AR. Please try again.');
+    }
+}
+
+window.openARModal = function() {
+    const modal = document.getElementById('arNavigationModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.remove('hidden');
+        
+        console.log('[AR] Modal opened, checking if rooms need to load, arAllRooms.length =', arAllRooms.length);
+        
+        // Load rooms data if not already loaded
+        if (arAllRooms.length === 0) {
+            console.log('[AR] Loading rooms data on modal open');
+            loadARRoomsData();
+        } else {
+            console.log('[AR] Rooms already loaded, repopulating dropdowns');
+            populateARRoomDropdowns();
+        }
+    }
+}
+
+window.closeARModal = function() {
+    const modal = document.getElementById('arNavigationModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.add('hidden');
+    }
+    // Reset selections
+    arSelectedCurrentRoom = null;
+    arSelectedDestinationRoom = null;
+}
+
+window.loadARRoomsData = function() {
+    console.log('[AR] Starting to load rooms data from /api/ar/rooms/');
+    fetch('/api/ar/rooms/', {
+        headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+        }
+    })
+        .then(response => {
+            console.log('[AR] API response received, status:', response.status, 'ok:', response.ok);
+            
+            if (!response.ok) {
+                console.error('[AR] HTTP error status:', response.status);
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            // Check content type to ensure it's JSON
+            const contentType = response.headers.get('content-type');
+            console.log('[AR] Response content-type:', contentType);
+            
+            if (!contentType || !contentType.includes('application/json')) {
+                console.warn('[AR] Response is not JSON, got:', contentType);
+                throw new Error('Expected JSON response from API');
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            console.log('[AR] Parsed JSON response, structure:', {
+                hasRooms: !!data.rooms,
+                roomsIsArray: Array.isArray(data.rooms),
+                roomsCount: data.rooms ? data.rooms.length : 0
+            });
+            
+            // Handle API response structure: {status: 'success', rooms: [...]}
+            if (data && data.rooms && Array.isArray(data.rooms)) {
+                console.log(`[AR] Found ${data.rooms.length} rooms in API response`);
+                arAllRooms = data.rooms.map(room => {
+                    // Parse coordinates if they're stored as string "x,y,z"
+                    let coords = room.coordinates;
+                    if (typeof coords === 'string') {
+                        const parts = coords.split(',').map(p => parseFloat(p.trim()));
+                        coords = { x: parts[0] || 0, y: parts[1] || 0, z: parts[2] || 0 };
+                    } else if (typeof coords === 'object' && coords !== null) {
+                        // Already an object, ensure numeric values
+                        coords = {
+                            x: parseFloat(coords.x) || 0,
+                            y: parseFloat(coords.y) || 0,
+                            z: parseFloat(coords.z) || 0
+                        };
+                    } else {
+                        coords = { x: 0, y: 0, z: 0 };
+                    }
+                    
+                    return {
+                        id: room.id,
+                        number: String(room.number),
+                        name: room.name || 'Unknown',
+                        type: room.type || 'Standard',
+                        building: room.building || 'Unknown',
+                        floor: room.floor || 'Unknown',
+                        floor_id: room.floor_id,
+                        x: coords.x,
+                        y: coords.y,
+                        z: coords.z,
+                        coordinates: coords,
+                        images: room.images || []
+                    };
+                });
+                console.log(`[AR] Processed ${arAllRooms.length} rooms successfully`);
+                populateARRoomDropdowns();
+                
+                // Also populate the AR system's global rooms array for the AR modules
+                if (typeof window !== 'undefined') {
+                    window.rooms = arAllRooms;
+                    console.log('[AR] Set window.rooms to', window.rooms.length, 'rooms');
+                    // If AR UI module is loaded, populate its room selects too
+                    if (window._AR_UI && typeof window._AR_UI.populateRoomSelects === 'function') {
+                        console.log('[AR] Populating AR UI room selects');
+                        window._AR_UI.populateRoomSelects(arAllRooms);
+                    }
+                }
+            } else {
+                console.error('[AR] Invalid response structure:', data);
+                throw new Error('Invalid response structure from API');
+            }
+        })
+        .catch(error => {
+            console.error('[AR] Error loading AR rooms data:', error);
+            // Show user-friendly error
+            const modal = document.getElementById('arNavigationModal');
+            if (modal) {
+                const errorMsg = document.createElement('div');
+                errorMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #ef4444; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000;';
+                errorMsg.textContent = 'Failed to load rooms data. Please try again.';
+                document.body.appendChild(errorMsg);
+                setTimeout(() => errorMsg.remove(), 5000);
+            }
+        });
+}
+
+window.populateARRoomDropdowns = function() {
+    const currentSelect = document.getElementById('arCurrentRoomSelect');
+    const destinationSelect = document.getElementById('arDestinationRoomSelect');
+    
+    if (!currentSelect || !destinationSelect) {
+        console.error('AR dropdown elements not found');
+        return;
+    }
+    
+    // Check if arAllRooms is an array
+    if (!Array.isArray(arAllRooms)) {
+        console.error('arAllRooms is not an array:', arAllRooms);
+        return;
+    }
+    
+    console.log(`Populating AR room dropdowns with ${arAllRooms.length} rooms`);
+    
+    // Sort rooms by building and floor
+    const sortedRooms = arAllRooms.slice().sort((a, b) => {
+        if (a.building !== b.building) return a.building.localeCompare(b.building);
+        return a.floor.localeCompare(b.floor);
+    });
+    
+    // Clear existing options
+    currentSelect.innerHTML = '<option value="">-- Select current location --</option>';
+    destinationSelect.innerHTML = '<option value="">-- Select destination --</option>';
+    
+    // Add rooms
+    sortedRooms.forEach(room => {
+        const optionText = `${room.number} - ${room.name} (${room.building}, ${room.floor})`;
+        
+        const currentOption = document.createElement('option');
+        currentOption.value = room.id;
+        currentOption.textContent = optionText;
+        currentSelect.appendChild(currentOption);
+        
+        const destOption = document.createElement('option');
+        destOption.value = room.id;
+        destOption.textContent = optionText;
+        destinationSelect.appendChild(destOption);
+    });
+    
+    console.log('AR room dropdowns populated successfully');
+}
+
+window.preSelectARCurrentRoom = function(roomNumber) {
+    const matchingRoom = arAllRooms.find(r => r.number === roomNumber);
+    if (matchingRoom) {
+        const currentSelect = document.getElementById('arCurrentRoomSelect');
+        currentSelect.value = matchingRoom.id;
+        onARCurrentRoomSelected();
+    }
+}
+
+window.preSelectARDestinationRoom = function(roomNumber) {
+    const matchingRoom = arAllRooms.find(r => r.number === roomNumber);
+    if (matchingRoom) {
+        const destinationSelect = document.getElementById('arDestinationRoomSelect');
+        destinationSelect.value = matchingRoom.id;
+        onARDestinationRoomSelected();
+    }
+}
+
+window.onARCurrentRoomSelected = function() {
+    const roomId = document.getElementById('arCurrentRoomSelect').value;
+    if (!roomId) {
+        arSelectedCurrentRoom = null;
+        document.getElementById('arCurrentRoomDetails').classList.add('hidden');
+        updateARButtonState();
+        return;
+    }
+    
+    arSelectedCurrentRoom = arAllRooms.find(r => String(r.id) === String(roomId));
+    if (arSelectedCurrentRoom) {
+        document.getElementById('arCurrentRoomNumber').textContent = arSelectedCurrentRoom.number;
+        document.getElementById('arCurrentRoomType').textContent = arSelectedCurrentRoom.type || 'Standard';
+        document.getElementById('arCurrentRoomFloor').textContent = arSelectedCurrentRoom.floor;
+        document.getElementById('arCurrentRoomDetails').classList.remove('hidden');
+    }
+    updateARButtonState();
+}
+
+window.onARDestinationRoomSelected = function() {
+    const roomId = document.getElementById('arDestinationRoomSelect').value;
+    if (!roomId) {
+        arSelectedDestinationRoom = null;
+        document.getElementById('arDestinationRoomDetails').classList.add('hidden');
+        updateARButtonState();
+        return;
+    }
+    
+    arSelectedDestinationRoom = arAllRooms.find(r => String(r.id) === String(roomId));
+    if (arSelectedDestinationRoom) {
+        document.getElementById('arDestinationRoomNumber').textContent = arSelectedDestinationRoom.number;
+        document.getElementById('arDestinationRoomType').textContent = arSelectedDestinationRoom.type || 'Standard';
+        document.getElementById('arDestinationRoomFloor').textContent = arSelectedDestinationRoom.floor;
+        document.getElementById('arDestinationRoomDetails').classList.remove('hidden');
+    }
+    updateARButtonState();
+}
+
+window.updateARButtonState = function() {
+    const startBtn = document.getElementById('arStartButton');
+    const isValid = arSelectedCurrentRoom && arSelectedDestinationRoom && arSelectedCurrentRoom.id !== arSelectedDestinationRoom.id;
+    startBtn.disabled = !isValid;
+}
+
+window.startARNavigation = function() {
+    if (!arSelectedCurrentRoom || !arSelectedDestinationRoom) {
+        alert('Please select both current location and destination');
+        return;
+    }
+    
+    if (arSelectedCurrentRoom.id === arSelectedDestinationRoom.id) {
+        alert('Please select different rooms');
+        return;
+    }
+    
+    // Store selected rooms in window object for AR modules to access
+    window._AR_NAV_CURRENT_ROOM = arSelectedCurrentRoom;
+    window._AR_NAV_DESTINATION_ROOM = arSelectedDestinationRoom;
+    window._AR_NAV_ACTIVE_ROOMS = [arSelectedCurrentRoom, arSelectedDestinationRoom];
+    
+    console.log('Starting AR navigation:', {
+        current: arSelectedCurrentRoom,
+        destination: arSelectedDestinationRoom
+    });
+    
+    // Function to wait for AR system with retry logic
+    async function initializeARWithRetry(attempts = 0, maxAttempts = 10) {
+        // Check if AR system is ready
+        if (window.startARFlow && typeof window.startARFlow === 'function') {
+            console.log('AR system ready, starting flow');
+            window.startARFlow();
+            return true;
+        } else if (window._AR_WEBXR && window._AR_WEBXR.startARSession) {
+            console.log('AR WebXR ready, starting session');
+            window._AR_WEBXR.startARSession();
+            return true;
+        } else if (window._AR_RENDERER && window._AR_RENDERER.scene) {
+            console.log('AR Renderer ready, starting session');
+            alert('AR system ready. Initializing...');
+            closeARModal();
+            return true;
+        }
+        
+        // AR system not ready yet, retry if we haven't exceeded max attempts
+        if (attempts < maxAttempts) {
+            console.log(`AR system not ready yet (attempt ${attempts + 1}/${maxAttempts}), retrying in 200ms...`);
+            await new Promise(r => setTimeout(r, 200));
+            return initializeARWithRetry(attempts + 1, maxAttempts);
+        } else {
+            console.error('AR system components not initialized after max retries:', {
+                startARFlow: typeof window.startARFlow,
+                webxr: typeof window._AR_WEBXR,
+                webxrSession: window._AR_WEBXR ? typeof window._AR_WEBXR.startARSession : 'undefined',
+                renderer: typeof window._AR_RENDERER,
+                rendererScene: window._AR_RENDERER ? typeof window._AR_RENDERER.scene : 'undefined'
+            });
+            alert('AR system initializing... Please try again in a moment.');
+            return false;
+        }
+    }
+    
+    // Start the async initialization
+    initializeARWithRetry().catch(err => {
+        console.error('Error during AR initialization:', err);
+        alert('Unable to start AR. Please refresh the page and try again.');
+    });
+}
+
 window.showGuide = function(guideType) {
     const modals = {
         'buildings': 'buildingsGuideModal',
@@ -1932,7 +2108,12 @@ window.submitRoomRating = function() {
 
 function loadRoomRatings(roomId) {
     fetch(`/api/room/${roomId}/ratings/`)
-        .then(r => r.json())
+        .then(r => {
+            if (!r.ok) {
+                throw new Error(`HTTP ${r.status}: Failed to load ratings`);
+            }
+            return r.json();
+        })
         .then(data => {
             const avgRating = data.average_rating || 0;
             const totalRatings = data.total_ratings || 0;
@@ -1948,7 +2129,13 @@ function loadRoomRatings(roomId) {
             // Update user rating form state
             updateUserRatingFormState(data);
         })
-        .catch(error => console.error('Error loading ratings:', error));
+        .catch(error => {
+            console.warn('Could not load ratings for room:', error);
+            // Set default values on error
+            document.getElementById('roomAverageRating').textContent = '--';
+            document.getElementById('roomRatingCount').textContent = '0';
+            document.getElementById('roomAverageStars').innerHTML = '';
+        });
 }
 
 function updateUserRatingFormState(ratingsData) {
@@ -2135,7 +2322,20 @@ window.updateSaveButtonState = function(roomId, btn) {
             'Content-Type': 'application/json'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        // Accept any successful response, regardless of content-type (some errors might be HTML)
+        return response.text().then(text => {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.warn('Failed to parse JSON response, treating as empty:', text.substring(0, 100));
+                return { status: 'error', is_saved: false }; // Default to not saved on parse error
+            }
+        });
+    })
     .then(data => {
         if (data.status === 'success' && data.is_saved) {
             btn.classList.add('saved');
@@ -2151,7 +2351,17 @@ window.updateSaveButtonState = function(roomId, btn) {
             btn.style.backgroundColor = '';
         }
     })
-    .catch(error => console.error('Error checking saved state:', error));
+    .catch(error => {
+        console.error('Error checking saved state:', error);
+        // Silently fail - just don't update the button
+        if (btn) {
+            btn.classList.remove('saved');
+            try {
+                btn.querySelector('i').classList.add('far');
+                btn.querySelector('i').classList.remove('fas');
+            } catch (e) {}
+        }
+    });
 }
 
 window.deleteRating = function(feedbackId) {

@@ -21,6 +21,8 @@
         height: 100%;
         object-fit: contain;
         cursor: grab;
+        will-change: transform;
+        transition: transform 0.05s linear;
     }
     .map-svg:active {
         cursor: grabbing;
@@ -55,11 +57,12 @@
         top: 0;
         width: 24rem;
         height: 100vh;
+        bottom: auto;
         background-color: rgba(31, 41, 55, 0.95);
         backdrop-filter: blur(8px);
         transform: translateX(100%);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 50;
+        z-index: 9998;
         overflow-y: auto;
         box-shadow: -4px 0 15px rgba(0, 0, 0, 0.3);
         overscroll-behavior: contain;
@@ -100,8 +103,7 @@
     }
 
     /* Mobile Styles */
-    /* Mobile - Very Small Phones (320px and up) */
-    @media (max-width: 384px) {
+    @media (max-width: 768px) {
         .map-container {
             justify-content: center;
             align-items: center;
@@ -114,8 +116,6 @@
         }
 
         #buildingPanel {
-            position: fixed;
-            left: 50% !important;
             position: fixed !important;
             left: 50% !important;
             top: 55% !important;
@@ -123,7 +123,7 @@
             transform: translate(-50%, -50%) scale(0.95) !important;
             width: calc(100% - 32px) !important;
             max-width: 500px !important;
-            font-size: 0.85em;
+            font-size: 0.9em;
             z-index: 1000 !important;
         }
 
@@ -134,6 +134,75 @@
         #buildingPanel .grid {
             grid-template-columns: 1fr;
             gap: 0.5rem;
+        }
+
+        #buildingPanel .p-6 {
+            padding: 1rem;
+        }
+
+        #buildingPanel h2 {
+            font-size: 1.25rem;
+        }
+
+        #buildingPanel .text-lg {
+            font-size: 1rem;
+        }
+
+        #buildingPanel .text-sm {
+            font-size: 0.8rem;
+        }
+
+        #buildingPanel .mt-6 {
+            margin-top: 0.75rem;
+        }
+
+        #buildingPanel .mb-1 {
+            margin-bottom: 0.25rem;
+        }
+
+        #locationSidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+
+            /* always occupy full visible height */
+            height: 100vh;
+            max-height: 100vh;
+
+            /* collapsed state — leaves visible bottom space */
+            transform: translateY(calc(100vh - 60px));
+
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+
+            width: 100%;
+            border-radius: 0;
+
+            overflow-y: auto;
+            padding-bottom: 120px; /* ensures bottom space even when fully open */
+            z-index: 40;
+        }
+
+        /* when open, fill full height but still has bottom padding */
+        #locationSidebar.show {
+            transform: translateY(0);
+        }
+
+
+        #locationCards {
+            padding-bottom: 2rem !important;
+        }
+
+        #roomPreviewModal {
+            padding: 0.5rem;
+        }
+    }
+
+    /* Extra small phones (320px to 384px) - Aggressive scaling */
+    @media (max-width: 384px) {
+        #buildingPanel {
+            font-size: 0.85em !important;
+            transform: translate(-50%, -50%) scale(0.95) !important;
         }
 
         #buildingPanel .p-6 {
@@ -156,42 +225,12 @@
             margin-top: 0.5rem;
         }
 
-        #buildingPanel .mb-1 {
-            margin-bottom: 0.25rem;
-        }
-
-        #locationSidebar {
-            width: 100%;
-            max-width: 100%;
-            height: 100vh;
-            max-height: 100vh;
-            bottom: 0;
-            right: 0;
-            left: 0;
-            top: 0;
-            position: fixed;
-            border-radius: 0;
-            transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            padding-bottom: 2rem;
-            overflow-y: auto;
-            z-index: 40;
-        }
-
-        #locationSidebar.show {
-            transform: translateY(0);
-        }
-
-        #locationCards {
-            padding-bottom: 2rem !important;
-        }
-
         #roomPreviewModal {
-            padding: 0.5rem;
+            padding: 0 !important;
         }
 
         #roomPreviewModal .bg-slate-900\/95 {
-            border-radius: 1rem;
+            border-radius: 1.5rem 1.5rem 0 0 !important;
         }
 
         #roomPreviewModal .text-2xl {
@@ -203,173 +242,8 @@
         }
     }
 
-    /* Mobile - Small Phones (385px to 390px) */
-    @media (min-width: 385px) and (max-width: 390px) {
-        .map-container {
-            justify-content: center;
-            align-items: center;
-        }
-
-        .map-svg {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-
-        #buildingPanel {
-            position: fixed !important;
-            left: 50% !important;
-            top: 55% !important;
-            bottom: auto !important;
-            transform: translate(-50%, -50%) scale(0.9) !important;
-            width: calc(100% - 32px) !important;
-            max-width: 500px !important;
-            font-size: 0.9em;
-            z-index: 1000 !important;
-        }
-
-        #buildingPanel.visible {
-            transform: translate(-50%, -50%) scale(1) !important;
-        }
-
-        #buildingPanel .grid {
-            grid-template-columns: 1fr;
-            gap: 0.5rem;
-        }
-
-        #buildingPanel .p-6 {
-            padding: 1rem;
-        }
-
-        #buildingPanel h2 {
-            font-size: 1.25rem;
-        }
-
-        #buildingPanel .text-lg {
-            font-size: 1rem;
-        }
-
-        #buildingPanel .text-sm {
-            font-size: 0.8rem;
-        }
-
-        #buildingPanel .mt-6 {
-            margin-top: 0.75rem;
-        }
-
-        #buildingPanel .mb-1 {
-            margin-bottom: 0.25rem;
-        }
-
-        #locationSidebar {
-            width: 100%;
-            max-width: 100%;
-            height: 100vh;
-            max-height: 100vh;
-            bottom: 0;
-            right: 0;
-            left: 0;
-            top: 0;
-            position: fixed;
-            border-radius: 0;
-            transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            padding-bottom: 2rem;
-            overflow-y: auto;
-            z-index: 40;
-        }
-
-        #locationSidebar.show {
-            transform: translateY(0);
-        }
-
-        #locationCards {
-            padding-bottom: 2rem !important;
-        }
-    }
-
-    /* Tablet and Small Tablets (391px to 768px) - Side Drawer Behavior */
-    @media (min-width: 391px) and (max-width: 768px) {
-        .map-container {
-            justify-content: center;
-            align-items: center;
-        }
-
-        .map-svg {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-
-        #buildingPanel {
-            position: fixed !important;
-            left: 50% !important;
-            top: 55% !important;
-            bottom: auto !important;
-            transform: translate(-50%, -50%) scale(0.95) !important;
-            width: calc(100% - 32px) !important;
-            max-width: 500px !important;
-            font-size: 0.9em;
-            z-index: 1000 !important;
-        }
-
-        #buildingPanel.visible {
-            transform: translate(-50%, -50%) scale(1) !important;
-        }
-
-        #buildingPanel .grid {
-            grid-template-columns: 1fr;
-            gap: 0.5rem;
-        }
-
-        #buildingPanel .p-6 {
-            padding: 1rem;
-        }
-
-        #buildingPanel h2 {
-            font-size: 1.25rem;
-        }
-
-        #buildingPanel .text-lg {
-            font-size: 1rem;
-        }
-
-        #buildingPanel .text-sm {
-            font-size: 0.8rem;
-        }
-
-        #buildingPanel .mt-6 {
-            margin-top: 0.75rem;
-        }
-
-        #buildingPanel .mb-1 {
-            margin-bottom: 0.25rem;
-        }
-
-        #locationSidebar {
-            position: fixed;
-            right: 0;
-            top: 0;
-            width: 24rem;
-            height: 100vh;
-            bottom: auto;
-            left: auto;
-            background-color: rgba(31, 41, 55, 0.95);
-            backdrop-filter: blur(8px);
-            transform: translateX(100%);
-            border-radius: 0;
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 50;
-            overflow-y: auto;
-            box-shadow: -4px 0 15px rgba(0, 0, 0, 0.3);
-            overscroll-behavior: contain;
-            padding-bottom: 0;
-        }
-
-        #locationSidebar.show {
-            transform: translateX(0);
-        }
-
+    /* Medium to large phones (385px to 768px) - Side padding for location cards */
+    @media (min-width: 385px) and (max-width: 768px) {
         #locationCards {
             padding-bottom: 4rem !important;
         }
@@ -401,38 +275,8 @@
         }
     }
 
-    /* Room Preview Modal - Extra Small Phones */
-    @media (max-width: 384px) {
-        #roomPreviewModal {
-            padding: 0 !important;
-            justify-content: flex-end !important;
-            align-items: flex-end !important;
-            padding-top: 0 !important;
-        }
-
-        #roomPreviewModal .bg-slate-900\/95 {
-            width: 100% !important;
-            max-width: 100% !important;
-            max-height: 95vh !important;
-            border-radius: 1.5rem 1.5rem 0 0 !important;
-            margin: 0 !important;
-        }
-
-        #roomPreviewModal .sticky {
-            padding: 1rem;
-        }
-
-        #roomPreviewModal .text-2xl {
-            font-size: 1.25rem;
-        }
-
-        #roomPreviewModal .text-xl {
-            font-size: 1.1rem;
-        }
-    }
-
-    /* Room Preview Modal - Small to Medium Phones */
-    @media (min-width: 385px) and (max-width: 768px) {
+    /* Room Preview Modal - All phones (320px to 768px) */
+    @media (max-width: 768px) {
         #roomPreviewModal {
             padding: 1rem !important;
             justify-content: flex-end !important;
@@ -445,10 +289,37 @@
             max-width: 100% !important;
             max-height: 90vh !important;
             border-radius: 1.5rem 1.5rem 0 0 !important;
+            padding-bottom: 120px !important;
         }
 
         #roomPreviewModal .text-2xl {
             font-size: 1.5rem;
+        }
+    }
+
+    /* Extra small phones (320px to 384px) - Modal height & padding adjustments */
+    @media (max-width: 384px) {
+        #roomPreviewModal {
+            padding: 0 !important;
+            padding-top: 0 !important;
+        }
+
+        #roomPreviewModal .bg-slate-900\/95 {
+            max-height: 95vh !important;
+            margin: 0 !important;
+            padding-bottom: 120px !important;
+        }
+
+        #roomPreviewModal .sticky {
+            padding: 1rem;
+        }
+
+        #roomPreviewModal .text-2xl {
+            font-size: 1.25rem;
+        }
+
+        #roomPreviewModal .text-xl {
+            font-size: 1.1rem;
         }
     }
 
@@ -491,26 +362,6 @@
         opacity: 0;
         pointer-events: none;
         transition: opacity 0.3s ease-in-out;
-    }
-
-    /* Location Sidebar */
-    #locationSidebar {
-        position: fixed;
-        right: 0;
-        top: 0;
-        width: 24rem;
-        height: 100vh;
-        background-color: rgba(31, 41, 55, 0.95);
-        backdrop-filter: blur(8px);
-        transform: translateX(100%);
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 50;
-        overflow-y: auto;
-        box-shadow: -4px 0 15px rgba(0, 0, 0, 0.3);
-    }
-
-    #locationSidebar.show {
-        transform: translateX(0);
     }
 
     /* Location Cards */
@@ -614,7 +465,7 @@
     <!-- Mobile SVG (Phone View) -->
     <object 
         id="umapSVG-mobile" 
-        data="{% static 'UMAP_App/SVG/Phone-view2.svg' %}" 
+        data="{% static 'UMAP_App/SVG/UMAPS_Expanded10.0.svg' %}" 
         type="image/svg+xml"
         class="map-svg md:hidden">
     </object>
@@ -622,7 +473,7 @@
     <!-- Desktop SVG (Full View) -->
     <object 
         id="umapSVG" 
-        data="{% static 'UMAP_App/SVG/UMAPS_Expanded9.2.svg' %}" 
+        data="{% static 'UMAP_App/SVG/UMAPS_Expanded10.0.svg' %}" 
         type="image/svg+xml"
         class="map-svg hidden md:block">
     </object>
@@ -1032,8 +883,8 @@
 
             <!-- Action Buttons -->
             <div class="grid grid-cols-2 gap-2 md:gap-3 pb-4">
-                <button onclick="locateRoom()" class="px-3 md:px-4 py-2 md:py-3 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 rounded-lg transition-all duration-150 font-medium flex items-center justify-center gap-2 text-sm md:text-base">
-                    <i class="fas fa-location-dot"></i><span class="hidden md:inline">Locate Room</span><span class="md:hidden">Locate</span>
+                <button onclick="navigateToARWithRoom()" class="px-3 md:px-4 py-2 md:py-3 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 rounded-lg transition-all duration-150 font-medium flex items-center justify-center gap-2 text-sm md:text-base">
+                    <i class="fas fa-location-dot"></i><span class="hidden md:inline">AR Navigate</span><span class="md:hidden">AR Nav</span>
                 </button>
                 <button id="saveRoomBtn" onclick="toggleSaveLocation()" class="px-3 md:px-4 py-2 md:py-3 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 hover:text-amber-300 rounded-lg transition-all duration-150 font-medium flex items-center justify-center gap-2 text-sm md:text-base">
                     <i class="far fa-bookmark"></i><span class="hidden md:inline">Save</span>
@@ -1103,7 +954,7 @@
 </div>
 
 <!-- Location Details Sidebar -->
-<div id="locationSidebar" class="fixed right-0 top-0 w-full md:w-96 h-screen md:h-full transform translate-x-full transition-transform duration-300 ease-in-out z-[50] bg-slate-900/95 md:bg-transparent flex flex-col">
+<div id="locationSidebar" class="fixed right-0 top-0 w-full md:w-96 h-screen md:h-full transform translate-x-full transition-transform duration-300 ease-in-out z-[9998] bg-slate-900/95 md:bg-transparent flex flex-col">
     <div class="p-3 md:p-4 safe-area-inset flex-shrink-0">
         <!-- Back Button and Close Button Row -->
         <div class="flex items-center justify-between gap-2 mb-3">
@@ -1120,11 +971,11 @@
         </div>
         
         <!-- Header with safe spacing -->
-        <div class="flex justify-between items-start mb-3 mt-16 md:mt-0">
+        <div class="flex justify-between items-start mb-2 mt-4 md:mt-0">
             <div class="flex-1 min-w-0">
-                <h2 id="buildingTitle" class="text-base md:text-xl font-bold text-white mb-1 truncate">Building Information</h2>
+                <h2 id="buildingTitle" class="text-sm md:text-xl font-bold text-white mb-0.5 truncate">Building Information</h2>
                 <p id="buildingSubtitle" class="text-xs md:text-sm text-blue-400 truncate"></p>
-                <p id="buildingRoomCount" class="text-xs md:text-sm text-slate-400 mt-1"></p>
+                <p id="buildingRoomCount" class="text-xs md:text-sm text-slate-400 mt-0.5"></p>
             </div>
         </div>
 
@@ -1157,18 +1008,123 @@
     
     <!-- Scrollable Locations Container -->
     <div class="flex-1 overflow-y-auto px-3 md:px-4">
-        <div id="locationCards" class="space-y-3 md:space-y-4 pb-20 md:pb-6">
+        <div id="locationCards" class="space-y-3 md:space-y-4 pb-52 md:pb-6">
             <!-- Location cards will be inserted here by JavaScript -->
         </div>
         <p id="noSearchResults" class="text-slate-400 text-center py-4 hidden">No locations match your search</p>
     </div>
 </div>
 
+<!-- AR Navigation Modal -->
+<div id="arNavigationModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] hidden justify-center items-start pt-8 md:pt-16 p-4 overflow-y-auto" style="display: none;">
+    <div class="bg-slate-900/95 rounded-2xl shadow-2xl border border-slate-700/50 w-full max-w-2xl max-h-[85vh] flex flex-col flex-shrink-0 pb-[120px]">
+        <!-- Modal Header -->
+        <div class="sticky top-0 bg-slate-900/95 border-b border-slate-700/50 p-4 md:p-6 flex justify-between items-start flex-shrink-0">
+            <div class="flex items-center gap-3 flex-1 pr-4">
+                <img src="{% static 'UMAP_App/images/logo.png' %}" alt="UMAP Logo" class="h-8 w-8 rounded-lg object-cover flex-shrink-0">
+                <div class="flex-1">
+                    <h2 class="text-xl md:text-2xl font-bold text-white mb-1">AR Navigation</h2>
+                    <p class="text-xs md:text-sm text-blue-400 font-medium">Navigate using Augmented Reality</p>
+                </div>
+            </div>
+            <button onclick="closeARModal()" class="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-700/50 rounded-lg flex-shrink-0">
+                <i class="fas fa-times text-lg md:text-xl"></i>
+            </button>
+        </div>
 
+        <!-- Modal Content -->
+        <div class="p-4 md:p-6 overflow-y-auto flex-1">
+            <!-- Building Preview -->
+            <div class="mb-6">
+                <h3 class="text-base md:text-lg font-semibold text-white mb-3">Building Preview</h3>
+                <div class="w-full h-64 md:h-80 bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden flex items-center justify-center">
+                    <div class="relative w-full h-full">
+                        <div id="user-ar-video-box" class="relative w-full h-[350px] bg-black rounded-lg overflow-hidden border border-slate-700/70 shadow-inner">
+                            <video id="camera" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
+                            <canvas id="overlay" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-<!-- Dynamic Building Data -->
+            <!-- Location Selection -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div class="flex flex-col">
+                    <label for="arCurrentRoomSelect" class="text-xs font-semibold text-slate-400 uppercase mb-2">Where are you?</label>
+                    <select id="arCurrentRoomSelect" onchange="onARCurrentRoomSelected()" class="bg-slate-800/50 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+                        <option value="">-- Select current location --</option>
+                    </select>
+                </div>
+                <div class="flex flex-col">
+                    <label for="arDestinationRoomSelect" class="text-xs font-semibold text-slate-400 uppercase mb-2">Where do you want to go?</label>
+                    <select id="arDestinationRoomSelect" onchange="onARDestinationRoomSelected()" class="bg-slate-800/50 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+                        <option value="">-- Select destination --</option>
+                    </select>
+                </div>
+            </div>
 
-<!-- Main Script -->
+            <!-- Current Location Details -->
+            <div id="arCurrentRoomDetails" class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 mb-6 hidden">
+                <h3 class="text-sm font-semibold text-white mb-3">Your Current Location</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-700/50 rounded p-3">
+                        <div class="text-xs text-slate-400 mb-1">Room Number</div>
+                        <div id="arCurrentRoomNumber" class="text-sm font-semibold text-white">--</div>
+                    </div>
+                    <div class="bg-slate-700/50 rounded p-3">
+                        <div class="text-xs text-slate-400 mb-1">Type</div>
+                        <div id="arCurrentRoomType" class="text-sm font-semibold text-white">--</div>
+                    </div>
+                    <div class="bg-slate-700/50 rounded p-3 col-span-2">
+                        <div class="text-xs text-slate-400 mb-1">Floor</div>
+                        <div id="arCurrentRoomFloor" class="text-sm font-semibold text-white">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Destination Room Details -->
+            <div id="arDestinationRoomDetails" class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 mb-6 hidden">
+                <h3 class="text-sm font-semibold text-white mb-3">Destination</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-700/50 rounded p-3">
+                        <div class="text-xs text-slate-400 mb-1">Room Number</div>
+                        <div id="arDestinationRoomNumber" class="text-sm font-semibold text-white">--</div>
+                    </div>
+                    <div class="bg-slate-700/50 rounded p-3">
+                        <div class="text-xs text-slate-400 mb-1">Type</div>
+                        <div id="arDestinationRoomType" class="text-sm font-semibold text-white">--</div>
+                    </div>
+                    <div class="bg-slate-700/50 rounded p-3 col-span-2">
+                        <div class="text-xs text-slate-400 mb-1">Floor</div>
+                        <div id="arDestinationRoomFloor" class="text-sm font-semibold text-white">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="bg-blue-900/30 border border-blue-700/50 rounded-lg p-4 mb-6">
+                <div class="flex gap-3">
+                    <i class="fas fa-info-circle text-blue-400 flex-shrink-0 mt-0.5"></i>
+                    <p class="text-blue-200 text-sm">Select your current location and destination to start AR navigation. Only the two selected rooms will be shown in AR mode.</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-3">
+                <button onclick="startARNavigation()" id="arStartButton" class="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fas fa-play mr-2"></i>Start AR Session
+                </button>
+                <button onclick="closeARModal()" class="px-4 py-3 bg-slate-700/50 hover:bg-slate-700/70 text-slate-300 rounded-lg font-semibold transition-all">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="{% static 'UMAP_App/js/UI/main.js' %}"></script>
+<script src="{% static 'UMAP_App/js/AR/UserAR.js' %}"></script>
+<!-- Load AR Bootstrap as ES Module for dynamic imports -->
+<script type="module" src="{% static 'UMAP_App/js/AR/bootstrap.js' %}"></script>
 
 {% endblock %}

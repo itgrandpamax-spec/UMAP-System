@@ -62,15 +62,18 @@
             {{ profile_form.college }}
           </div>
           <div>
-            <label class="text-sm text-gray-600">Year Level</label>
-            {{ profile_form.year_level }}
+            <label class="text-sm text-gray-600">Change Password</label>
+            {{ user_form.password }}
+            {% if user_form.password.help_text %}
+            <p class="text-gray-400 text-xs mt-1">{{ user_form.password.help_text }}</p>
+            {% endif %}
+            {% if user_form.password.errors %}
+            <p class="text-red-500 text-xs mt-1">{{ user_form.password.errors.0 }}</p>
+            {% endif %}
           </div>
           <div>
-            <label class="text-sm text-gray-600">Profile Email</label>
-            {{ profile_form.email }}
-            {% if profile_form.email.errors %}
-            <p class="text-red-500 text-xs mt-1">{{ profile_form.email.errors.0 }}</p>
-            {% endif %}
+            <label class="text-sm text-gray-600">Year Level</label>
+            {{ profile_form.year_level }}
           </div>
           <div class="col-span-full">
             <label class="text-sm text-gray-600">Description</label>

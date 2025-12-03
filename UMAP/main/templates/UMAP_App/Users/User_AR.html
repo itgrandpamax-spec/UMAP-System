@@ -1,0 +1,998 @@
+{% extends 'UMAP_App/Users/Users_base.html' %}
+{% load static %}
+
+{% block body_class %}h-screen overflow-hidden{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* AR Container */
+    .ar-container {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(135deg, rgb(15, 23, 42) 0%, rgb(30, 41, 59) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    /* AR Modal */
+    .ar-modal {
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(71, 85, 105, 0.5);
+        border-radius: 1.5rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(10px);
+        width: 100%;
+        max-width: 52rem;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    /* Modal Header */
+    .ar-modal-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid rgba(71, 85, 105, 0.5);
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.8) 100%);
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .ar-modal-header::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
+        pointer-events: none;
+    }
+
+    .ar-modal-header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .ar-modal-title-group {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex: 1;
+    }
+
+    .ar-modal-title-group img {
+        height: 2rem;
+        width: 2rem;
+        border-radius: 0.5rem;
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+
+    .ar-modal-title-content h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: white;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .ar-modal-title-content p {
+        font-size: 0.875rem;
+        color: rgb(96, 165, 250);
+        font-weight: 500;
+        margin: 0.25rem 0 0 0;
+    }
+
+    .ar-modal-close {
+        background: transparent;
+        border: none;
+        color: rgb(156, 163, 175);
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .ar-modal-close:hover {
+        background: rgba(107, 114, 128, 0.5);
+        color: white;
+    }
+
+    .ar-modal-close i {
+        font-size: 1.125rem;
+    }
+
+    /* Modal Content */
+    .ar-modal-content {
+        padding: 1.5rem;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    /* Video Container */
+    .video-container {
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+
+    .video-container h2 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: white;
+        margin: 0 0 0.75rem 0;
+    }
+
+    .video-box {
+        width: 100%;
+        height: 280px;
+        background: rgb(3, 7, 18);
+        border: 1px solid rgba(71, 85, 105, 0.5);
+        border-radius: 1rem;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .video-box video,
+    .video-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .video-placeholder {
+        color: rgb(107, 114, 128);
+        font-size: 0.875rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .video-placeholder i {
+        font-size: 2rem;
+        opacity: 0.5;
+    }
+
+    /* Selection Section */
+    .selection-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .selection-section.full {
+        grid-template-columns: 1fr;
+    }
+
+    .selection-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .selection-group label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: rgb(107, 114, 128);
+        margin-bottom: 0.5rem;
+    }
+
+    .selection-group select {
+        background: rgba(51, 65, 85, 0.6);
+        border: 1px solid rgba(71, 85, 105, 0.5);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        color: white;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .selection-group select:hover {
+        background: rgba(51, 65, 85, 0.8);
+        border-color: rgba(96, 165, 250, 0.5);
+    }
+
+    .selection-group select:focus {
+        outline: none;
+        background: rgba(51, 65, 85, 0.9);
+        border-color: rgb(59, 130, 246);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .selection-group select option {
+        background: rgb(30, 41, 59);
+        color: white;
+    }
+
+    /* Room Details Card */
+    .room-details-card {
+        background: rgba(51, 65, 85, 0.5);
+        border: 1px solid rgba(71, 85, 105, 0.5);
+        border-radius: 1rem;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .room-details-card h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: white;
+        margin: 0 0 1rem 0;
+    }
+
+    .room-details-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .detail-item {
+        background: rgba(30, 41, 59, 0.5);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        border: 1px solid rgba(71, 85, 105, 0.3);
+    }
+
+    .detail-item label {
+        font-size: 0.75rem;
+        color: rgb(107, 114, 128);
+        font-weight: 600;
+        text-transform: uppercase;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .detail-item .value {
+        font-size: 0.95rem;
+        color: white;
+        font-weight: 500;
+    }
+
+    .detail-item.full {
+        grid-column: 1 / -1;
+    }
+
+    /* Hidden State */
+    .hidden-room-details {
+        display: none;
+    }
+
+    /* Button Group */
+    .button-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+    }
+
+    .button-group.full {
+        grid-template-columns: 1fr;
+    }
+
+    .btn {
+        padding: 0.875rem 1.25rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .btn-primary {
+        background: rgb(59, 130, 246);
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: rgb(37, 99, 235);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-secondary {
+        background: rgba(71, 85, 105, 0.5);
+        color: rgb(226, 232, 240);
+        border: 1px solid rgba(71, 85, 105, 0.5);
+    }
+
+    .btn-secondary:hover {
+        background: rgba(71, 85, 105, 0.7);
+        border-color: rgba(96, 165, 250, 0.5);
+        color: white;
+    }
+
+    .btn-secondary:active {
+        transform: translateY(0);
+    }
+
+    .btn i {
+        font-size: 1rem;
+    }
+
+    /* Info Box */
+    .info-box {
+        background: rgba(59, 130, 246, 0.1);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .info-box i {
+        color: rgb(96, 165, 250);
+        flex-shrink: 0;
+        margin-top: 0.25rem;
+    }
+
+    .info-box p {
+        color: rgb(226, 232, 240);
+        font-size: 0.875rem;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 640px) {
+        .ar-container {
+            padding: 1rem;
+        }
+
+        .ar-modal {
+            max-height: calc(100vh - 2rem);
+            border-radius: 1rem;
+        }
+
+        .ar-modal-header {
+            padding: 1rem;
+        }
+
+        .ar-modal-content {
+            padding: 1rem;
+        }
+
+        .ar-modal-title-content h1 {
+            font-size: 1.25rem;
+        }
+
+        .ar-modal-title-content p {
+            font-size: 0.75rem;
+        }
+
+        .video-box {
+            height: 200px;
+        }
+
+        .selection-section {
+            grid-template-columns: 1fr;
+        }
+
+        .room-details-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .button-group {
+            grid-template-columns: 1fr;
+        }
+
+        .btn {
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+        }
+    }
+
+    /* Loading State */
+    .loading {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Main AR Container -->
+<div class="ar-container">
+    <!-- AR Modal -->
+    <div class="ar-modal">
+        <!-- Header -->
+        <div class="ar-modal-header">
+            <div class="ar-modal-header-content">
+                <div class="ar-modal-title-group">
+                    <img src="{% static 'UMAP_App/images/logo.png' %}" alt="UMAP Logo">
+                    <div class="ar-modal-title-content">
+                        <h1>AR Navigation</h1>
+                        <p>Navigate using Augmented Reality</p>
+                    </div>
+                </div>
+                <button class="ar-modal-close" onclick="window.history.back()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="ar-modal-content">
+            <!-- Video/3D Model Preview -->
+            <div class="video-container">
+                <h2>Building Preview</h2>
+                <div class="video-box" id="videoBox">
+                    <div id="ar-video-box" class="relative w-full h-[350px] bg-black rounded-lg overflow-hidden border border-slate-700/70 shadow-inner">
+                        <video id="camera" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
+                        <canvas id="overlay" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location Selection -->
+            <div class="selection-section">
+                <div class="selection-group">
+                    <label for="arCurrentRoomSelect">Where are you?</label>
+                    <select id="arCurrentRoomSelect" onchange="onARCurrentRoomSelected()">
+                        <option value="">-- Select current location --</option>
+                    </select>
+                </div>
+                <div class="selection-group">
+                    <label for="arDestinationRoomSelect">Where do you want to go?</label>
+                    <select id="arDestinationRoomSelect" onchange="onARDestinationRoomSelected()">
+                        <option value="">-- Select destination --</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Current Location Details -->
+            <div id="arCurrentRoomDetails" class="room-details-card hidden-room-details">
+                <h3>Your Current Location</h3>
+                <div class="room-details-grid">
+                    <div class="detail-item">
+                        <label>Room Number</label>
+                        <div class="value" id="arCurrentRoomNumber">--</div>
+                    </div>
+                    <div class="detail-item">
+                        <label>Type</label>
+                        <div class="value" id="arCurrentRoomType">--</div>
+                    </div>
+                    <div class="detail-item full">
+                        <label>Floor</label>
+                        <div class="value" id="arCurrentRoomFloor">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Destination Room Details -->
+            <div id="arDestinationRoomDetails" class="room-details-card hidden-room-details">
+                <h3>Destination</h3>
+                <div class="room-details-grid">
+                    <div class="detail-item">
+                        <label>Room Number</label>
+                        <div class="value" id="arDestinationRoomNumber">--</div>
+                    </div>
+                    <div class="detail-item">
+                        <label>Type</label>
+                        <div class="value" id="arDestinationRoomType">--</div>
+                    </div>
+                    <div class="detail-item full">
+                        <label>Floor</label>
+                        <div class="value" id="arDestinationRoomFloor">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="info-box">
+                <i class="fas fa-info-circle"></i>
+                <p>Select your current location and destination to start AR navigation. Only the two selected rooms will be shown in AR mode.</p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="button-group full">
+                <button class="btn btn-primary" id="arStartButton" onclick="startARNavigation()" disabled>
+                    <i class="fas fa-play"></i>
+                    <span>Start AR Session</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import map for Three.js (MUST come before AR scripts) -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module" src="/static/UMAP_App/js/AR/bootstrap.js?v=11"></script>
+
+<!-- Pass rooms data to JavaScript -->
+{% if rooms %}
+{{ rooms|json_script:"rooms-data" }}
+{% endif %}
+
+<!-- User AR Navigation Script -->
+<script>
+// Use global variables from main.js if available, otherwise create local ones
+let arAllRooms = (typeof window.arAllRooms !== 'undefined') ? window.arAllRooms : [];
+let arSelectedCurrentRoom = null;
+let arSelectedDestinationRoom = null;
+let is3DPreviewInitialized = false;
+
+// Initialize rooms from server data
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[AR] User_AR.html page loaded, initializing...');
+    
+    try {
+        const roomsNode = document.getElementById('rooms-data');
+        if (roomsNode && roomsNode.textContent) {
+            const loadedRooms = JSON.parse(roomsNode.textContent || '[]');
+            arAllRooms = loadedRooms.map(room => {
+                // Parse coordinates if they're stored as string "x,y,z"
+                let coords = room.coordinates;
+                if (typeof coords === 'string') {
+                    const parts = coords.split(',').map(p => parseFloat(p.trim()));
+                    coords = { x: parts[0] || 0, y: parts[1] || 0, z: parts[2] || 0 };
+                } else if (typeof coords === 'object' && coords !== null) {
+                    coords = {
+                        x: parseFloat(coords.x) || 0,
+                        y: parseFloat(coords.y) || 0,
+                        z: parseFloat(coords.z) || 0
+                    };
+                } else {
+                    coords = { x: 0, y: 0, z: 0 };
+                }
+                
+                return {
+                    id: room.id,
+                    number: String(room.number),
+                    name: room.name || 'Unknown',
+                    type: room.type || 'Standard',
+                    building: room.building || 'Unknown',
+                    floor: room.floor || 'Unknown',
+                    floor_id: room.floor_id,
+                    x: coords.x,
+                    y: coords.y,
+                    z: coords.z,
+                    coordinates: coords,
+                    images: room.images || []
+                };
+            });
+            console.log('[AR] Loaded', arAllRooms.length, 'rooms from server data');
+            populateARRoomDropdowns();
+            
+            // Also set global window.rooms for AR modules
+            if (typeof window !== 'undefined') {
+                window.rooms = arAllRooms;
+                console.log('[AR] Set window.rooms for AR modules');
+            }
+        }
+    } catch (e) {
+        console.error('Error loading rooms data:', e);
+    }
+
+    // Try to pre-select the destination room from roomPreviewModal
+    // Wait for rooms to be loaded and dropdowns populated first
+    setTimeout(() => {
+        if (arAllRooms && arAllRooms.length > 0) {
+            tryPreSelectDestinationRoom();
+        } else {
+            console.log('[AR] Rooms not loaded yet, will retry...');
+            // Retry a few more times if rooms still not loaded
+            let retries = 0;
+            const retryInterval = setInterval(() => {
+                if (arAllRooms && arAllRooms.length > 0) {
+                    tryPreSelectDestinationRoom();
+                    clearInterval(retryInterval);
+                } else if (retries > 10) {
+                    console.warn('[AR] Could not load rooms after retries');
+                    clearInterval(retryInterval);
+                }
+                retries++;
+            }, 200);
+        }
+    }, 300);
+    
+    // Initialize 3D renderer and load GLB automatically
+    console.log('[AR] Scheduling automatic 3D renderer initialization...');
+    setTimeout(() => {
+        initializeAutomatic3DRenderer();
+    }, 500);
+});
+
+// Auto-initialize 3D renderer when page loads (separate from room selection)
+function initializeAutomatic3DRenderer() {
+    console.log('[AR] Attempting automatic 3D renderer initialization');
+    console.log('[AR] Module status:', {
+        renderer: typeof window._AR_RENDERER,
+        rendererScene: window._AR_RENDERER ? typeof window._AR_RENDERER.scene : 'undefined',
+        rendererCamera: window._AR_RENDERER ? typeof window._AR_RENDERER.camera : 'undefined',
+        markers: typeof window._AR_MARKERS,
+        webxr: typeof window._AR_WEBXR,
+        startARFlow: typeof window.startARFlow
+    });
+    
+    async function waitForRenderer(attempts = 0, maxAttempts = 10) {
+        if (window._AR_RENDERER && window._AR_RENDERER.scene && window._AR_RENDERER.renderer) {
+            console.log('[AR] Three.js renderer ready, loading GLB model');
+            
+            // Load the GLB model for preview
+            if (window._AR_RENDERER.loadGLTF) {
+                try {
+                    const glbPath = window._AR_GLTF_PATH || '/static/UMAP_App/glb/Umak_3d.glb';
+                    console.log('[AR] Loading GLB from:', glbPath);
+                    window._AR_RENDERER.loadGLTF(glbPath + '?cb=' + Date.now())
+                        .then(model => {
+                            console.log('[AR] GLB model loaded successfully');
+                            
+                            // Hide placeholder and start render loop
+                            const placeholder = document.getElementById('videoPlaceholder');
+                            if (placeholder) {
+                                placeholder.style.display = 'none';
+                                console.log('[AR] Hid placeholder, showing 3D render');
+                            }
+                            
+                            // Start render loop
+                            startRenderLoop();
+                        })
+                        .catch(err => {
+                            console.error('[AR] Failed to load GLB:', err);
+                        });
+                } catch (e) {
+                    console.error('[AR] Error in loadGLTF:', e);
+                }
+            }
+            return true;
+        }
+        
+        if (attempts < maxAttempts) {
+            console.log(`[AR] Renderer not ready (attempt ${attempts + 1}/${maxAttempts}), retrying...`);
+            await new Promise(r => setTimeout(r, 200));
+            return waitForRenderer(attempts + 1, maxAttempts);
+        } else {
+            console.warn('[AR] Renderer initialization failed after max retries');
+            return false;
+        }
+    }
+    
+    waitForRenderer().catch(err => {
+        console.error('[AR] Error in waitForRenderer:', err);
+    });
+}
+
+// Start continuous rendering of the 3D scene
+function startRenderLoop() {
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        try {
+            if (window._AR_RENDERER) {
+                const renderer = window._AR_RENDERER.renderer;
+                const scene = window._AR_RENDERER.scene;
+                const camera = window._AR_RENDERER.camera;
+                const controls = window._AR_RENDERER.controls;
+                
+                if (renderer && scene && camera) {
+                    if (controls) controls.update();
+                    renderer.render(scene, camera);
+                }
+            }
+        } catch (e) {
+            console.warn('[AR] Render loop error:', e);
+        }
+    }
+    
+    animate();
+    console.log('[AR] 3D render loop started');
+}
+
+function populateARRoomDropdowns() {
+    const currentSelect = document.getElementById('arCurrentRoomSelect');
+    const destinationSelect = document.getElementById('arDestinationRoomSelect');
+
+    if (!currentSelect || !destinationSelect) {
+        console.error('AR dropdown elements not found');
+        return;
+    }
+
+    // Sort rooms by building and floor
+    const sortedRooms = arAllRooms.sort((a, b) => {
+        if (a.building !== b.building) return a.building.localeCompare(b.building);
+        return a.floor.localeCompare(b.floor);
+    });
+
+    // Clear existing options
+    currentSelect.innerHTML = '<option value="">-- Select current location --</option>';
+    destinationSelect.innerHTML = '<option value="">-- Select destination --</option>';
+
+    // Add rooms
+    sortedRooms.forEach(room => {
+        const optionText = `${room.number} - ${room.name} (${room.building}, ${room.floor})`;
+        
+        const currentOption = document.createElement('option');
+        currentOption.value = room.id;
+        currentOption.textContent = optionText;
+        currentSelect.appendChild(currentOption);
+
+        const destOption = document.createElement('option');
+        destOption.value = room.id;
+        destOption.textContent = optionText;
+        destinationSelect.appendChild(destOption);
+    });
+}
+
+function tryPreSelectDestinationRoom() {
+    try {
+        console.log('[AR] Attempting to pre-select destination room');
+        const arDestRoom = sessionStorage.getItem('ar_destination_room');
+        if (!arDestRoom) {
+            console.log('[AR] No destination room in sessionStorage');
+            return;
+        }
+
+        const destRoom = JSON.parse(arDestRoom);
+        const roomNumber = destRoom.number;
+        console.log('[AR] Found destination room in sessionStorage:', roomNumber);
+
+        // Wait for dropdown to exist
+        const destinationSelect = document.getElementById('arDestinationRoomSelect');
+        if (!destinationSelect) {
+            console.warn('[AR] Destination select element not found');
+            return;
+        }
+
+        // Find matching room in arAllRooms
+        console.log('[AR] Searching for room', roomNumber, 'in', arAllRooms.length, 'available rooms');
+        const matchingRoom = arAllRooms.find(r => {
+            const match = String(r.number) === String(roomNumber);
+            if (match) console.log('[AR] Found matching room:', r);
+            return match;
+        });
+        
+        if (matchingRoom) {
+            // Pre-select in dropdown as DESTINATION
+            destinationSelect.value = matchingRoom.id;
+            console.log('[AR] Set destination select value to:', matchingRoom.id);
+            
+            // Trigger selection handler
+            onARDestinationRoomSelected();
+            
+            // Clear sessionStorage to avoid re-selection on refresh
+            sessionStorage.removeItem('ar_destination_room');
+            
+            console.log('[AR] Pre-selected destination room:', matchingRoom.number);
+        } else {
+            console.warn('[AR] No matching room found for:', roomNumber);
+        }
+    } catch (e) {
+        console.error('[AR] Error pre-selecting destination room:', e);
+    }
+}
+
+window.onARCurrentRoomSelected = function() {
+    const roomId = document.getElementById('arCurrentRoomSelect').value;
+    if (!roomId) {
+        arSelectedCurrentRoom = null;
+        document.getElementById('arCurrentRoomDetails').classList.add('hidden-room-details');
+        updateARButtonState();
+        return;
+    }
+
+    arSelectedCurrentRoom = arAllRooms.find(r => String(r.id) === String(roomId));
+    if (arSelectedCurrentRoom) {
+        document.getElementById('arCurrentRoomNumber').textContent = arSelectedCurrentRoom.number;
+        document.getElementById('arCurrentRoomType').textContent = arSelectedCurrentRoom.type || 'Standard';
+        document.getElementById('arCurrentRoomFloor').textContent = arSelectedCurrentRoom.floor;
+        document.getElementById('arCurrentRoomDetails').classList.remove('hidden-room-details');
+    }
+    updateARButtonState();
+    initializeConditional3DPreview();
+}
+
+window.onARDestinationRoomSelected = function() {
+    const roomId = document.getElementById('arDestinationRoomSelect').value;
+    if (!roomId) {
+        arSelectedDestinationRoom = null;
+        document.getElementById('arDestinationRoomDetails').classList.add('hidden-room-details');
+        updateARButtonState();
+        return;
+    }
+
+    arSelectedDestinationRoom = arAllRooms.find(r => String(r.id) === String(roomId));
+    if (arSelectedDestinationRoom) {
+        document.getElementById('arDestinationRoomNumber').textContent = arSelectedDestinationRoom.number;
+        document.getElementById('arDestinationRoomType').textContent = arSelectedDestinationRoom.type || 'Standard';
+        document.getElementById('arDestinationRoomFloor').textContent = arSelectedDestinationRoom.floor;
+        document.getElementById('arDestinationRoomDetails').classList.remove('hidden-room-details');
+    }
+    updateARButtonState();
+    initializeConditional3DPreview();
+}
+
+function updateARButtonState() {
+    const startBtn = document.getElementById('arStartButton');
+    const isValid = arSelectedCurrentRoom && arSelectedDestinationRoom && arSelectedCurrentRoom.id !== arSelectedDestinationRoom.id;
+    startBtn.disabled = !isValid;
+}
+
+// Conditional 3D preview rendering - only when both rooms selected
+function initializeConditional3DPreview() {
+    // Only render if BOTH rooms are selected and 3D not already initialized
+    if (!arSelectedCurrentRoom || !arSelectedDestinationRoom || is3DPreviewInitialized) {
+        return;
+    }
+
+    if (arSelectedCurrentRoom.id === arSelectedDestinationRoom.id) {
+        return; // Same room, don't render
+    }
+
+    console.log('[AR] Both rooms selected, rendering markers and arrow');
+    console.log('[AR] Point A (Current):', arSelectedCurrentRoom.number, arSelectedCurrentRoom.coordinates);
+    console.log('[AR] Point B (Destination):', arSelectedDestinationRoom.number, arSelectedDestinationRoom.coordinates);
+
+    is3DPreviewInitialized = true;
+
+    // Set active rooms for AR modules
+    window._AR_NAV_CURRENT_ROOM = arSelectedCurrentRoom;
+    window._AR_NAV_DESTINATION_ROOM = arSelectedDestinationRoom;
+    window._AR_NAV_ACTIVE_ROOMS = [arSelectedCurrentRoom, arSelectedDestinationRoom];
+
+    // Try to initialize 3D rendering with retry logic
+    async function initializePreviewWithRetry(attempts = 0, maxAttempts = 5) {
+        // Check if markers module is available
+        if (window._AR_MARKERS && typeof window._AR_MARKERS.highlightTwoRooms === 'function') {
+            console.log('[AR] Markers module available, rendering two room markers');
+            try {
+                window._AR_MARKERS.highlightTwoRooms(arSelectedCurrentRoom, arSelectedDestinationRoom);
+                return true;
+            } catch (e) {
+                console.error('[AR] Error calling highlightTwoRooms:', e);
+            }
+        }
+
+        // Retry if modules not yet loaded
+        if (attempts < maxAttempts) {
+            console.log(`[AR] Modules not ready yet (attempt ${attempts + 1}/${maxAttempts}), retrying...`);
+            await new Promise(r => setTimeout(r, 300));
+            return initializePreviewWithRetry(attempts + 1, maxAttempts);
+        } else {
+            console.log('[AR] 3D preview modules not available yet');
+            return false;
+        }
+    }
+
+    initializePreviewWithRetry().catch(err => {
+        console.error('[AR] Error during 3D preview initialization:', err);
+    });
+}
+
+window.startARNavigation = function() {
+    if (!arSelectedCurrentRoom || !arSelectedDestinationRoom) {
+        alert('Please select both current location and destination');
+        return;
+    }
+
+    if (arSelectedCurrentRoom.id === arSelectedDestinationRoom.id) {
+        alert('Please select different rooms');
+        return;
+    }
+
+    // Store selected rooms in window object for AR modules to access
+    window._AR_NAV_CURRENT_ROOM = arSelectedCurrentRoom;
+    window._AR_NAV_DESTINATION_ROOM = arSelectedDestinationRoom;
+    window._AR_NAV_ACTIVE_ROOMS = [arSelectedCurrentRoom, arSelectedDestinationRoom];
+
+    console.log('Starting AR navigation:', {
+        current: arSelectedCurrentRoom,
+        destination: arSelectedDestinationRoom
+    });
+
+    // Function to wait for AR system with retry logic
+    async function initializeARWithRetry(attempts = 0, maxAttempts = 15) {
+        // Check for renderer first (most fundamental)
+        if (window._AR_RENDERER && window._AR_RENDERER.scene && window._AR_RENDERER.camera && window._AR_RENDERER.renderer) {
+            console.log('[AR_NAV] Three.js renderer ready');
+            
+            // Try to start AR flow if available
+            if (window.startARFlow && typeof window.startARFlow === 'function') {
+                console.log('[AR_NAV] AR flow function ready, starting...');
+                try {
+                    window.startARFlow();
+                    return true;
+                } catch (e) {
+                    console.error('[AR_NAV] Error starting AR flow:', e);
+                }
+            }
+            
+            // Try WebXR if available
+            if (window._AR_WEBXR && window._AR_WEBXR.startARSession) {
+                console.log('[AR_NAV] WebXR ready, starting session');
+                try {
+                    window._AR_WEBXR.startARSession();
+                    return true;
+                } catch (e) {
+                    console.error('[AR_NAV] Error starting WebXR session:', e);
+                }
+            }
+            
+            // Just alert that system is ready and waiting
+            console.log('[AR_NAV] Renderer ready, awaiting AR flow initialization');
+            alert('AR system ready. Initializing...');
+            return true;
+        }
+        
+        if (attempts < maxAttempts) {
+            console.log(`[AR_NAV] AR components not ready yet (attempt ${attempts + 1}/${maxAttempts})`);
+            console.log('[AR_NAV] Checking:', {
+                rendererReady: !!(window._AR_RENDERER && window._AR_RENDERER.scene),
+                startARFlowReady: typeof window.startARFlow === 'function',
+                webxrReady: !!(window._AR_WEBXR && window._AR_WEBXR.startARSession)
+            });
+            await new Promise(r => setTimeout(r, 300));
+            return initializeARWithRetry(attempts + 1, maxAttempts);
+        } else {
+            console.error('[AR_NAV] AR system components not initialized after max retries:', {
+                startARFlow: typeof window.startARFlow,
+                webxr: typeof window._AR_WEBXR,
+                webxrSession: window._AR_WEBXR ? typeof window._AR_WEBXR.startARSession : 'undefined',
+                renderer: typeof window._AR_RENDERER,
+                rendererScene: window._AR_RENDERER ? typeof window._AR_RENDERER.scene : 'undefined',
+                rendererCamera: window._AR_RENDERER ? typeof window._AR_RENDERER.camera : 'undefined'
+            });
+            alert('AR system initializing... Please try again in a moment.');
+            return false;
+        }
+    }
+    
+    initializeARWithRetry().catch(err => {
+        console.error('[AR_NAV] Error during AR initialization:', err);
+        alert('Unable to start AR. Please refresh the page and try again.');
+    });
+}
+</script>
+
+{% endblock %}

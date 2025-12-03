@@ -1,5 +1,6 @@
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
 from .models import Floor, Room, RoomProfile, SavedLocation, UserActivity
 from .views import extract_floor_number
 
@@ -368,6 +369,81 @@ def get_user_recent(request):
         import traceback
         traceback.print_exc()
         print(f"=== END GET_USER_RECENT (ERROR) ===\n")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def get_ar_rooms_data(request):
+    """API endpoint to get all rooms with 3D coordinates (X, Y, Z) for AR module
+    
+    Returns a list of all rooms with their complete coordinates including Z (height/floor).
+    Used by the AR interface to position room markers in 3D space.
+    """
+    try:
+        rooms_data = []
+        
+        # Get all rooms with their profiles
+        rooms = Room.objects.select_related('profile', 'floor').all()
+        
+        for room in rooms:
+            if not hasattr(room, 'profile') or not room.profile:
+                continue
+            
+            # Extract coordinates from room profile (handle both dict and string formats)
+            coords = room.profile.coordinates or {}
+            
+            # Parse coordinates if stored as string "x,y,z"
+            if isinstance(coords, str):
+                try:
+                    parts = coords.split(',')
+                    x = float(parts[0].strip()) if len(parts) > 0 else 0
+                    y = float(parts[1].strip()) if len(parts) > 1 else 0
+                    z = float(parts[2].strip()) if len(parts) > 2 else 0
+                except (ValueError, IndexError):
+                    x = y = z = 0
+            elif isinstance(coords, dict):
+                x = float(coords.get('x', 0)) if coords.get('x') is not None else 0
+                y = float(coords.get('y', 0)) if coords.get('y') is not None else 0
+                z = float(coords.get('z', 0)) if coords.get('z') is not None else 0
+            else:
+                x = y = z = 0
+            
+            room_data = {
+                'id': room.id,
+                'number': room.profile.number,
+                'name': room.profile.name,
+                'type': room.profile.type,
+                'description': room.profile.description or '',
+                'building': room.floor.building,
+                'floor': room.floor.name,
+                'floor_id': room.floor.id,
+                # ✅ Include all three coordinates for 3D positioning
+                'x': x,
+                'y': y,
+                'z': z,
+                # Also include as object for compatibility
+                'coordinates': {
+                    'x': x,
+                    'y': y,
+                    'z': z
+                },
+                'images': room.profile.get_images() if room.profile.get_images() else []
+            }
+            rooms_data.append(room_data)
+        
+        return JsonResponse({
+            'status': 'success',
+            'rooms': rooms_data,
+            'total_rooms': len(rooms_data)
+        })
+        
+    except Exception as e:
+        print(f"ERROR in get_ar_rooms_data: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': str(e)

@@ -1,0 +1,131 @@
+{% extends 'UMAP_App/Admin/Admin_Sidebar.html' %}
+{% load static %}
+
+{% block content %}
+
+<!-- AR WRAPPER -->
+<div class="bg-slate-800/50 border border-slate-700/50 rounded-xl backdrop-blur-lg p-3 shadow-xl w-full max-w-5xl mx-auto">
+
+    <div class="flex flex-col md:flex-row gap-3">
+
+        <!-- DEBUG PANEL (LEFT SIDE, ULTRA COMPACT) -->
+        <div id="debug-panel"
+             class="flex-shrink-0 w-full md:w-60 p-2 rounded-lg bg-slate-900/50 border border-slate-700/70 text-xs overflow-y-auto">
+
+            <div id="dbg-status" class="font-semibold mb-1 text-xs">Initializing...</div>
+
+            <!-- Debug Buttons -->
+            <div class="grid grid-cols-1 gap-1 mb-1">
+                <button id="dbg-orient-perm" class="w-full px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-[10px]">Orientation</button>
+                <button id="dbg-calibrate" class="w-full px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-[10px]">Calibrate</button>
+                <button id="dbg-start-camera" class="w-full px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-[10px]">Camera</button>
+            </div>
+
+            <!-- Anchors -->
+            <div class="mb-1">
+                <div class="text-[11px] mb-0.5">Anchors: <span id="dbg-anchors-count">0</span></div>
+                <button id="dbg-clear-anchors" class="w-full px-2 py-0.5 bg-red-700 hover:bg-red-600 rounded text-[10px]">Clear Anchors</button>
+            </div>
+
+            <!-- Log Area -->
+            <div id="mobile-log-area" class="max-h-[120px] overflow-auto bg-black bg-opacity-30 rounded p-1 text-[10px] font-mono mb-1"></div>
+
+            <!-- Teleport / Load -->
+            <div class="mt-1 pt-1 border-t border-slate-700">
+                <label for="dbg-teleport-select" class="block mb-0.5 text-[11px]">Teleport:</label>
+                <div class="flex gap-1 items-center mb-1">
+                    <select id="dbg-teleport-select" class="flex-1 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-[10px]"></select>
+                    <button id="dbg-teleport-btn" class="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 rounded text-[10px]">Go</button>
+                    <button id="dbg-load-fbx" class="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 rounded text-[10px]">3D</button>
+                </div>
+                <label class="flex items-center text-[11px] mb-1">
+                    <input id="dbg-free-roam" type="checkbox" class="mr-1 text-xs"> Free roam
+                </label>
+                <button id="calibrate-here-btn" class="w-full px-2 py-0.5 bg-red-700 hover:bg-red-600 rounded text-[10px]" style="display:none;">Calibrate Here</button>
+            </div>
+
+            <!-- Transform & Nudge -->
+            <div class="mt-1 pt-1 border-t border-slate-700">
+                <div class="font-semibold mb-1 text-[11px]">World / Model</div>
+                <input id="dbg-scale" type="number" step="0.1" value="0.9" class="w-full bg-slate-800 border border-slate-700 rounded px-1 py-0.5 mb-1 text-[10px]" placeholder="World scale">
+                <input id="dbg-marker-size" type="number" step="0.1" value="0.3" class="w-full bg-slate-800 border border-slate-700 rounded px-1 py-0.5 mb-1 text-[10px]" placeholder="Marker size">
+                <input id="dbg-model-scale" type="number" step="0.1" value="0.9" class="w-full bg-slate-800 border border-slate-700 rounded px-1 py-0.5 mb-1 text-[10px]" placeholder="Model scale">
+                <button id="dbg-apply-transform" class="w-full px-2 py-0.5 bg-blue-600 hover:bg-blue-700 rounded text-[10px] mb-1">Apply</button>
+
+                <div class="font-semibold mb-1 text-[11px]">Nudge (debug)</div>
+                <select id="dbg-nudge-target" class="w-full bg-slate-800 border border-slate-700 rounded px-1 py-0.5 mb-1 text-[10px]">
+                    <option value="model">Model</option>
+                    <option value="markers">Markers</option>
+                </select>
+                <label class="flex items-center text-[10px] mb-1"><input id="dbg-bind-markers" type="checkbox" class="mr-1"> Bind markers to model</label>
+                <div class="grid grid-cols-3 gap-1">
+                    <input id="dbg-nudge-x" type="number" step="0.1" value="0" class="w-full bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-[10px]" placeholder="X">
+                    <input id="dbg-nudge-y" type="number" step="0.1" value="0" class="w-full bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-[10px]" placeholder="Y">
+                    <input id="dbg-nudge-z" type="number" step="0.1" value="0" class="w-full bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-[10px]" placeholder="Z">
+                </div>
+                <button id="dbg-nudge-reset" class="w-full mt-1 px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-[10px]">Reset</button>
+            </div>
+        </div>
+
+        <!-- AR VIDEO + START BUTTON -->
+        <div class="flex-1 flex flex-col h-full">
+            <div id="ar-video-box" class="relative w-full h-[350px] bg-black rounded-lg overflow-hidden border border-slate-700/70 shadow-inner">
+                <video id="camera" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
+                <canvas id="overlay" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+            </div>
+            <button id="start-ar-btn" class="w-full px-3 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold mt-1">Start AR</button>
+        </div>
+
+    </div>
+</div>
+
+<!-- SCRIPTS BELOW -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script src="{% static 'UMAP_App/js/AR/debug.js' %}?v=7"></script>
+<script src="{% static 'UMAP_App/js/AR/renderer.js' %}?v=7"></script>
+<script src="{% static 'UMAP_App/js/AR/webxr.js' %}?v=7"></script>
+<script src="{% static 'UMAP_App/js/AR/ui.js' %}?v=7"></script>
+<script src="{% static 'UMAP_App/js/AR/markers.js' %}?v=7"></script>
+<script src="{% static 'UMAP_App/js/AR/sensors.js' %}?v=7"></script>
+<script src="{% static 'UMAP_App/js/AR/ar_navigation.js' %}?v=7"></script>
+
+{% if rooms %}
+{{ rooms|json_script:"rooms-data" }}
+{% endif %}
+
+<script>
+try {
+    const node = document.getElementById('rooms-data');
+    if (node && node.textContent) {
+        const roomsData = JSON.parse(node.textContent || '[]');
+        window._SERVER_ROOMS = roomsData.map(room => ({
+            id: room.id,
+            name: room.name,
+            number: room.number,
+            type: room.type,
+            description: room.description || "",
+            building: room.building,
+            floor: room.floor,
+            floor_id: room.floor_id,
+            x: Number(room.x) || 0,
+            y: Number(room.y) || 0,
+            z: Number(room.z) || 0,
+            images: room.images || []
+        }));
+        if (window._AR_UI?.populateRoomSelects) {
+            window._AR_UI.populateRoomSelects(window._SERVER_ROOMS);
+        }
+    }
+} catch (e) {
+    console.error("Room load error:", e);
+}
+</script>
+
+{% endblock %}

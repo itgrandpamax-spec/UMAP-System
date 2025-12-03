@@ -8,6 +8,7 @@ urlpatterns = [
     path('', include('main.urls')),
 ]
 
-# Serve media files in development
+# Serve static and media files in development
 if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.BASE_DIR / 'main' / 'static')
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
